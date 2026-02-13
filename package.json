@@ -4,6 +4,8 @@
   "description": "Complete collection of battle-tested Claude Code configs — agents, skills, hooks, commands, and rules evolved over 10+ months of intensive daily use by an Anthropic hackathon winner",
   "keywords": [
     "claude-code",
+    "codebuddy",
+    "tencent-cloud",
     "ai",
     "agents",
     "skills",
@@ -19,7 +21,9 @@
     "best-practices",
     "cursor",
     "cursor-ide",
-    "opencode"
+    "opencode",
+    "migration",
+    "multi-model"
   ],
   "author": {
     "name": "Affaan Mustafa",
