@@ -960,6 +960,63 @@ Agent Teams spawns multiple context windows. Each teammate consumes tokens indep
 
 ---
 
+## 🔄 CodeBuddy Migration
+
+Need to migrate to CodeBuddy? The migration tool now supports **Windows, macOS, and Linux** with automatic symlink creation and PowerShell script generation.
+
+### Quick Migration
+
+```bash
+# Run migration (defaults to symlinks for plugin publishing)
+node scripts/migrate-to-codebuddy.js
+
+# Use copy mode if needed
+node scripts/migrate-to-codebuddy.js --no-symlinks
+
+# Check the report
+cat .codebuddy/MIGRATION_REPORT.md
+```
+
+### Windows Setup
+
+```powershell
+# 1. Enable Developer Mode (Settings → Update & Security → Developer options)
+# OR run PowerShell as Administrator
+
+# 2. Enable PowerShell script execution
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+# 3. Run migration
+node scripts/migrate-to-codebuddy.js
+```
+
+### Key Features
+
+| Feature | Windows | macOS | Linux |
+|---------|----------|--------|-------|
+| 🔗 Symlink Support | ✅ Junctions | ✅ Symlinks | ✅ Symlinks |
+| 🔧 PowerShell Scripts | ✅ Auto-generated | ❌ Not applicable | ❌ Not applicable |
+| 🔧 Bash Scripts | ✅ (Git Bash/WSL) | ✅ | ✅ |
+| 🔄 Auto Env Updates | ✅ | ✅ | ✅ |
+| 📦 CL v2 Migration | ✅ | ✅ | ✅ |
+
+### Migration Highlights
+
+- **98% Compatibility**: Agents, Skills, Commands, Hooks, Rules all supported
+- **Continuous Learning v2**: Special handling with Windows PowerShell scripts
+- **Environment Variables**: Automatic conversion (`CLAUDE_*` → `CODEBUDDY_*`)
+- **Symlink Mode**: Perfect for plugin publishing, auto-updates, and disk savings
+- **Fallback Mechanism**: Automatic fallback to copy if symlinks unavailable
+
+### Documentation
+
+- 📖 [Windows Migration Guide](docs/WINDOWS_MIGRATION_GUIDE.md)
+- 📖 [Windows Support & Symlink Migration](docs/WINDOWS_SYMLINK_MIGRATION.md)
+- 📖 [CodeBuddy Migration Guide](docs/CODEBUDDY_MIGRATION_GUIDE.md)
+- 📖 [Compatibility Matrix](docs/CODEBUDDY_COMPATIBILITY_MATRIX.md)
+
+---
+
 ## ⚠️ Important Notes
 
 ### Token Optimization
