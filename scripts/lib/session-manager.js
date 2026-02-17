@@ -32,9 +32,13 @@ function parseSessionFilename(filename) {
 
   const dateStr = match[1];
 
-  // Validate date components are in valid ranges (not just format)
+  // Validate date components are calendar-accurate (not just format)
   const [year, month, day] = dateStr.split('-').map(Number);
   if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  // Reject impossible dates like Feb 31, Apr 31 — Date constructor rolls
+  // over invalid days (e.g., Feb 31 → Mar 3), so check month roundtrips
+  const d = new Date(year, month - 1, day);
+  if (d.getMonth() !== month - 1 || d.getDate() !== day) return null;
 
   // match[2] is undefined for old format (no ID)
   const shortId = match[2] || 'no-id';
@@ -43,8 +47,10 @@ function parseSessionFilename(filename) {
     filename,
     shortId,
     date: dateStr,
-    // Convert date string to Date object
-    datetime: new Date(dateStr)
+    // Use local-time constructor (consistent with validation on line 40)
+    // new Date(dateStr) interprets YYYY-MM-DD as UTC midnight which shows
+    // as the previous day in negative UTC offset timezones
+    datetime: new Date(year, month - 1, day)
   };
 }
 
@@ -185,11 +191,20 @@ function getSessionStats(sessionPathOrContent) {
  */
 function getAllSessions(options = {}) {
   const {
-    limit = 50,
-    offset = 0,
+    limit: rawLimit = 50,
+    offset: rawOffset = 0,
     date = null,
     search = null
   } = options;
+
+  // Clamp offset and limit to safe non-negative integers.
+  // Without this, negative offset causes slice() to count from the end,
+  // and NaN values cause slice() to return empty or unexpected results.
+  // Note: cannot use `|| default` because 0 is falsy — use isNaN instead.
+  const offsetNum = Number(rawOffset);
+  const offset = Number.isNaN(offsetNum) ? 0 : Math.max(0, Math.floor(offsetNum));
+  const limitNum = Number(rawLimit);
+  const limit = Number.isNaN(limitNum) ? 50 : Math.max(1, Math.floor(limitNum));
 
   const sessionsDir = getSessionsDir();
 

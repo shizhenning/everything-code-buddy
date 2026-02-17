@@ -215,6 +215,11 @@ async function readStdinJson(options = {}) {
     const timer = setTimeout(() => {
       if (!settled) {
         settled = true;
+        // Clean up stdin listeners so the event loop can exit
+        process.stdin.removeAllListeners('data');
+        process.stdin.removeAllListeners('end');
+        process.stdin.removeAllListeners('error');
+        if (process.stdin.unref) process.stdin.unref();
         // Resolve with whatever we have so far rather than hanging
         try {
           resolve(data.trim() ? JSON.parse(data) : {});
@@ -454,7 +459,15 @@ function grepFile(filePath, pattern) {
 
   let regex;
   try {
-    regex = pattern instanceof RegExp ? pattern : new RegExp(pattern);
+    if (pattern instanceof RegExp) {
+      // Always create a new RegExp without the 'g' flag to prevent lastIndex
+      // state issues when using .test() in a loop (g flag makes .test() stateful,
+      // causing alternating match/miss on consecutive matching lines)
+      const flags = pattern.flags.replace('g', '');
+      regex = new RegExp(pattern.source, flags);
+    } else {
+      regex = new RegExp(pattern);
+    }
   } catch {
     return []; // Invalid regex pattern
   }

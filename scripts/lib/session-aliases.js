@@ -110,8 +110,10 @@ function saveAliases(aliases) {
     // Atomic write: write to temp file, then rename
     fs.writeFileSync(tempPath, content, 'utf8');
 
-    // On Windows, we need to delete the target file before renaming
-    if (fs.existsSync(aliasesPath)) {
+    // On Windows, rename fails with EEXIST if destination exists, so delete first.
+    // On Unix/macOS, rename(2) atomically replaces the destination — skip the
+    // delete to avoid an unnecessary non-atomic window between unlink and rename.
+    if (process.platform === 'win32' && fs.existsSync(aliasesPath)) {
       fs.unlinkSync(aliasesPath);
     }
     fs.renameSync(tempPath, aliasesPath);
@@ -310,13 +312,26 @@ function renameAlias(oldAlias, newAlias) {
     return { success: false, error: `Alias '${oldAlias}' not found` };
   }
 
-  if (data.aliases[newAlias]) {
-    return { success: false, error: `Alias '${newAlias}' already exists` };
+  // Validate new alias name (same rules as setAlias)
+  if (!newAlias || newAlias.length === 0) {
+    return { success: false, error: 'New alias name cannot be empty' };
   }
 
-  // Validate new alias name
+  if (newAlias.length > 128) {
+    return { success: false, error: 'New alias name cannot exceed 128 characters' };
+  }
+
   if (!/^[a-zA-Z0-9_-]+$/.test(newAlias)) {
     return { success: false, error: 'New alias name must contain only letters, numbers, dashes, and underscores' };
+  }
+
+  const reserved = ['list', 'help', 'remove', 'delete', 'create', 'set'];
+  if (reserved.includes(newAlias.toLowerCase())) {
+    return { success: false, error: `'${newAlias}' is a reserved alias name` };
+  }
+
+  if (data.aliases[newAlias]) {
+    return { success: false, error: `Alias '${newAlias}' already exists` };
   }
 
   const aliasData = data.aliases[oldAlias];
@@ -433,9 +448,17 @@ function cleanupAliases(sessionExists) {
 
   if (removed.length > 0 && !saveAliases(data)) {
     log('[Aliases] Failed to save after cleanup');
+    return {
+      success: false,
+      totalChecked: Object.keys(data.aliases).length + removed.length,
+      removed: removed.length,
+      removedAliases: removed,
+      error: 'Failed to save after cleanup'
+    };
   }
 
   return {
+    success: true,
     totalChecked: Object.keys(data.aliases).length + removed.length,
     removed: removed.length,
     removedAliases: removed
