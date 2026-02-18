@@ -100,7 +100,7 @@ Session Activity
 
 ### 1. Enable Observation Hooks
 
-Add to your `~/.claude/settings.json`.
+Add to your `~/.codebuddy/settings.json`.
 
 **If installed as a plugin** (recommended):
 
@@ -111,21 +111,21 @@ Add to your `~/.claude/settings.json`.
       "matcher": "*",
       "hooks": [{
         "type": "command",
-        "command": "${CLAUDE_PLUGIN_ROOT}/skills/continuous-learning-v2/hooks/observe.sh pre"
+        "command": "${CODEBUDDY_PLUGIN_ROOT}/skills/continuous-learning-v2/hooks/observe.sh pre"
       }]
     }],
     "PostToolUse": [{
       "matcher": "*",
       "hooks": [{
         "type": "command",
-        "command": "${CLAUDE_PLUGIN_ROOT}/skills/continuous-learning-v2/hooks/observe.sh post"
+        "command": "${CODEBUDDY_PLUGIN_ROOT}/skills/continuous-learning-v2/hooks/observe.sh post"
       }]
     }]
   }
 }
 ```
 
-**If installed manually** to `~/.claude/skills`:
+**If installed manually** to `~/.codebuddy/skills`:
 
 ```json
 {
@@ -134,14 +134,14 @@ Add to your `~/.claude/settings.json`.
       "matcher": "*",
       "hooks": [{
         "type": "command",
-        "command": "~/.claude/skills/continuous-learning-v2/hooks/observe.sh pre"
+        "command": "~/.codebuddy/skills/continuous-learning-v2/hooks/observe.sh pre"
       }]
     }],
     "PostToolUse": [{
       "matcher": "*",
       "hooks": [{
         "type": "command",
-        "command": "~/.claude/skills/continuous-learning-v2/hooks/observe.sh post"
+        "command": "~/.codebuddy/skills/continuous-learning-v2/hooks/observe.sh post"
       }]
     }]
   }
@@ -153,8 +153,8 @@ Add to your `~/.claude/settings.json`.
 The Python CLI will create these automatically, but you can also create them manually:
 
 ```bash
-mkdir -p ~/.claude/homunculus/{instincts/{personal,inherited},evolved/{agents,skills,commands}}
-touch ~/.claude/homunculus/observations.jsonl
+mkdir -p ~/.codebuddy/homunculus/{instincts/{personal,inherited},evolved/{agents,skills,commands}}
+touch ~/.codebuddy/homunculus/observations.jsonl
 ```
 
 ### 3. Use the Instinct Commands
@@ -184,13 +184,13 @@ Edit `config.json`:
   "version": "2.0",
   "observation": {
     "enabled": true,
-    "store_path": "~/.claude/homunculus/observations.jsonl",
+    "store_path": "~/.codebuddy/homunculus/observations.jsonl",
     "max_file_size_mb": 10,
     "archive_after_days": 7
   },
   "instincts": {
-    "personal_path": "~/.claude/homunculus/instincts/personal/",
-    "inherited_path": "~/.claude/homunculus/instincts/inherited/",
+    "personal_path": "~/.codebuddy/homunculus/instincts/personal/",
+    "inherited_path": "~/.codebuddy/homunculus/instincts/inherited/",
     "min_confidence": 0.3,
     "auto_approve_threshold": 0.7,
     "confidence_decay_rate": 0.05
@@ -208,7 +208,7 @@ Edit `config.json`:
   },
   "evolution": {
     "cluster_threshold": 3,
-    "evolved_path": "~/.claude/homunculus/evolved/"
+    "evolved_path": "~/.codebuddy/homunculus/evolved/"
   }
 }
 ```
@@ -216,7 +216,7 @@ Edit `config.json`:
 ## File Structure
 
 ```
-~/.claude/homunculus/
+~/.codebuddy/homunculus/
 ├── identity.json           # Your profile, technical level
 ├── observations.jsonl      # Current session observations
 ├── observations.archive/   # Processed observations
@@ -270,7 +270,7 @@ Hooks fire **100% of the time**, deterministically. This means:
 ## Backward Compatibility
 
 v2 is fully compatible with v1:
-- Existing `~/.claude/skills/learned/` skills still work
+- Existing `~/.codebuddy/skills/learned/` skills still work
 - Stop hook still runs (but now also feeds into v2)
 - Gradual migration path: run both in parallel
 

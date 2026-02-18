@@ -8,14 +8,14 @@
 # - Compact after exploration, before execution
 # - Compact after completing a milestone, before starting next
 #
-# Hook config (in ~/.claude/settings.json):
+# Hook config (in ~/.codebuddy/settings.json):
 # {
 #   "hooks": {
 #     "PreToolUse": [{
 #       "matcher": "Edit|Write",
 #       "hooks": [{
 #         "type": "command",
-#         "command": "~/.claude/skills/strategic-compact/suggest-compact.sh"
+#         "command": "~/.codebuddy/skills/strategic-compact/suggest-compact.sh"
 #       }]
 #     }]
 #   }
@@ -28,8 +28,8 @@
 # - Plan has been finalized
 
 # Track tool call count (increment in a temp file)
-# Use CLAUDE_SESSION_ID for session-specific counter (not $$ which changes per invocation)
-SESSION_ID="${CLAUDE_SESSION_ID:-${PPID:-default}}"
+# Use CODEBUDDY_SESSION_ID for session-specific counter (not $$ which changes per invocation)
+SESSION_ID="${CODEBUDDY_SESSION_ID:-${PPID:-default}}"
 COUNTER_FILE="/tmp/claude-tool-count-${SESSION_ID}"
 THRESHOLD=${COMPACT_THRESHOLD:-50}
 

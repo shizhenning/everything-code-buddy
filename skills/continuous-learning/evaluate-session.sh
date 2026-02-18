@@ -6,14 +6,14 @@
 # - Stop runs once at session end (lightweight)
 # - UserPromptSubmit runs every message (heavy, adds latency)
 #
-# Hook config (in ~/.claude/settings.json):
+# Hook config (in ~/.codebuddy/settings.json):
 # {
 #   "hooks": {
 #     "Stop": [{
 #       "matcher": "*",
 #       "hooks": [{
 #         "type": "command",
-#         "command": "~/.claude/skills/continuous-learning/evaluate-session.sh"
+#         "command": "~/.codebuddy/skills/continuous-learning/evaluate-session.sh"
 #       }]
 #     }]
 #   }
@@ -21,13 +21,13 @@
 #
 # Patterns to detect: error_resolution, debugging_techniques, workarounds, project_specific
 # Patterns to ignore: simple_typos, one_time_fixes, external_api_issues
-# Extracted skills saved to: ~/.claude/skills/learned/
+# Extracted skills saved to: ~/.codebuddy/skills/learned/
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_FILE="$SCRIPT_DIR/config.json"
-LEARNED_SKILLS_PATH="${HOME}/.claude/skills/learned"
+LEARNED_SKILLS_PATH="${HOME}/.codebuddy/skills/learned"
 MIN_SESSION_LENGTH=10
 
 # Load config if exists
@@ -36,7 +36,7 @@ if [ -f "$CONFIG_FILE" ]; then
     echo "[ContinuousLearning] jq is required to parse config.json but not installed, using defaults" >&2
   else
     MIN_SESSION_LENGTH=$(jq -r '.min_session_length // 10' "$CONFIG_FILE")
-    LEARNED_SKILLS_PATH=$(jq -r '.learned_skills_path // "~/.claude/skills/learned/"' "$CONFIG_FILE" | sed "s|~|$HOME|")
+    LEARNED_SKILLS_PATH=$(jq -r '.learned_skills_path // "~/.codebuddy/skills/learned/"' "$CONFIG_FILE" | sed "s|~|$HOME|")
   fi
 fi
 
@@ -48,7 +48,7 @@ mkdir -p "$LEARNED_SKILLS_PATH"
 stdin_data=$(cat)
 transcript_path=$(echo "$stdin_data" | grep -o '"transcript_path":"[^"]*"' | head -1 | cut -d'"' -f4)
 if [ -z "$transcript_path" ]; then
-  transcript_path="${CLAUDE_TRANSCRIPT_PATH:-}"
+  transcript_path="${CODEBUDDY_TRANSCRIPT_PATH:-}"
 fi
 
 if [ -z "$transcript_path" ] || [ ! -f "$transcript_path" ]; then
