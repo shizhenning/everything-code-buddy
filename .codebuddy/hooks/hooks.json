@@ -1,7 +1,17 @@
 {
-  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "$schema": "https://json.schemastore.org/codebuddy-settings.json",
   "hooks": {
     "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CODEBUDDY_PLUGIN_ROOT}/skills/continuous-learning-v2/hooks/observe.js pre ${tool_name}\""
+          }
+        ],
+        "description": "Record tool usage for instinct learning"
+      },
       {
         "matcher": "Bash",
         "hooks": [
@@ -37,7 +47,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"const fs=require('fs');let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const i=JSON.parse(d);const p=i.tool_input?.file_path||'';if(/\\.(md|txt)$/.test(p)&&!/(README|CLAUDE|AGENTS|CONTRIBUTING)\\.md$/.test(p)&&!/\\.claude\\/plans\\//.test(p)){console.error('[Hook] BLOCKED: Unnecessary documentation file creation');console.error('[Hook] File: '+p);console.error('[Hook] Use README.md for documentation instead');process.exit(2)}}catch{}console.log(d)})\""
+            "command": "node -e \"const fs=require('fs');let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const i=JSON.parse(d);const p=i.tool_input?.file_path||'';if(/\\.(md|txt)$/.test(p)&&!/(README|CODEBUDDY|AGENTS|CONTRIBUTING)\\.md$/.test(p)&&!/\\.codebuddy\\/plans\\//.test(p)){console.error('[Hook] BLOCKED: Unnecessary documentation file creation');console.error('[Hook] File: '+p);console.error('[Hook] Use README.md for documentation instead');process.exit(2)}}catch{}console.log(d)})\""
           }
         ],
         "description": "Block creation of random .md files - keeps docs consolidated"
@@ -47,7 +57,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/suggest-compact.js\""
+            "command": "node \"${CODEBUDDY_PLUGIN_ROOT}/scripts/hooks/suggest-compact.js\""
           }
         ],
         "description": "Suggest manual compaction at logical intervals"
@@ -59,7 +69,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/pre-compact.js\""
+            "command": "node \"${CODEBUDDY_PLUGIN_ROOT}/scripts/hooks/pre-compact.js\""
           }
         ],
         "description": "Save state before context compaction"
@@ -71,13 +81,33 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/session-start.js\""
+            "command": "node \"${CODEBUDDY_PLUGIN_ROOT}/scripts/hooks/session-start.js\""
           }
         ],
         "description": "Load previous context and detect package manager on new session"
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CODEBUDDY_PLUGIN_ROOT}/skills/continuous-learning-v2/hooks/observe.js session-start\""
+          }
+        ],
+        "description": "Record session start for instinct learning"
       }
     ],
     "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CODEBUDDY_PLUGIN_ROOT}/skills/continuous-learning-v2/hooks/observe.js post ${tool_name}\""
+          }
+        ],
+        "description": "Record tool result for instinct learning"
+      },
       {
         "matcher": "Bash",
         "hooks": [
@@ -105,7 +135,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/post-edit-format.js\""
+            "command": "node \"${CODEBUDDY_PLUGIN_ROOT}/scripts/hooks/post-edit-format.js\""
           }
         ],
         "description": "Auto-format JS/TS files with Prettier after edits"
@@ -115,7 +145,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/post-edit-typecheck.js\""
+            "command": "node \"${CODEBUDDY_PLUGIN_ROOT}/scripts/hooks/post-edit-typecheck.js\""
           }
         ],
         "description": "TypeScript check after editing .ts/.tsx files"
@@ -125,7 +155,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/post-edit-console-warn.js\""
+            "command": "node \"${CODEBUDDY_PLUGIN_ROOT}/scripts/hooks/post-edit-console-warn.js\""
           }
         ],
         "description": "Warn about console.log statements after edits"
@@ -137,7 +167,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/check-console-log.js\""
+            "command": "node \"${CODEBUDDY_PLUGIN_ROOT}/scripts/hooks/check-console-log.js\""
           }
         ],
         "description": "Check for console.log in modified files after each response"
@@ -149,7 +179,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/session-end.js\""
+            "command": "node \"${CODEBUDDY_PLUGIN_ROOT}/scripts/hooks/session-end.js\""
           }
         ],
         "description": "Persist session state on end"
@@ -159,10 +189,20 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/evaluate-session.js\""
+            "command": "node \"${CODEBUDDY_PLUGIN_ROOT}/scripts/hooks/evaluate-session.js\""
           }
         ],
         "description": "Evaluate session for extractable patterns"
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CODEBUDDY_PLUGIN_ROOT}/skills/continuous-learning-v2/hooks/observe.js session-end\""
+          }
+        ],
+        "description": "Record session end for instinct learning"
       }
     ]
   }

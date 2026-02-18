@@ -1,16 +1,16 @@
 # Hooks
 
-Hooks are event-driven automations that fire before or after Claude Code tool executions. They enforce code quality, catch mistakes early, and automate repetitive checks.
+Hooks are event-driven automations that fire before or after CodeBuddy tool executions. They enforce code quality, catch mistakes early, and automate repetitive checks.
 
 ## How Hooks Work
 
 ```
-User request → Claude picks a tool → PreToolUse hook runs → Tool executes → PostToolUse hook runs
+User request → CodeBuddy picks a tool → PreToolUse hook runs → Tool executes → PostToolUse hook runs
 ```
 
 - **PreToolUse** hooks run before the tool executes. They can **block** (exit code 2) or **warn** (stderr without blocking).
 - **PostToolUse** hooks run after the tool completes. They can analyze output but cannot block.
-- **Stop** hooks run after each Claude response.
+- **Stop** hooks run after each CodeBuddy response.
 - **SessionStart/SessionEnd** hooks run at session lifecycle boundaries.
 - **PreCompact** hooks run before context compaction, useful for saving state.
 
@@ -23,7 +23,7 @@ User request → Claude picks a tool → PreToolUse hook runs → Tool executes 
 | **Dev server blocker** | `Bash` | Blocks `npm run dev` etc. outside tmux — ensures log access | 2 (blocks) |
 | **Tmux reminder** | `Bash` | Suggests tmux for long-running commands (npm test, cargo build, docker) | 0 (warns) |
 | **Git push reminder** | `Bash` | Reminds to review changes before `git push` | 0 (warns) |
-| **Doc file blocker** | `Write` | Blocks creation of random `.md`/`.txt` files (allows README, CLAUDE, CONTRIBUTING) | 2 (blocks) |
+| **Doc file blocker** | `Write` | Blocks creation of random `.md`/`.txt` files (allows README, CODEBUDDY, CONTRIBUTING) | 2 (blocks) |
 | **Strategic compact** | `Edit\|Write` | Suggests manual `/compact` at logical intervals (every ~50 tool calls) | 0 (warns) |
 
 ### PostToolUse Hooks
@@ -50,7 +50,7 @@ User request → Claude picks a tool → PreToolUse hook runs → Tool executes 
 
 ### Disabling a Hook
 
-Remove or comment out the hook entry in `hooks.json`. If installed as a plugin, override in your `~/.claude/settings.json`:
+Remove or comment out the hook entry in `hooks.json`. If installed as a plugin, override in your `~/.codebuddy/settings.json`:
 
 ```json
 {
@@ -85,7 +85,7 @@ process.stdin.on('end', () => {
   const toolOutput = input.tool_output;    // Only available in PostToolUse
 
   // Warn (non-blocking): write to stderr
-  console.error('[Hook] Warning message shown to Claude');
+  console.error('[Hook] Warning message shown to CodeBuddy');
 
   // Block (PreToolUse only): exit with code 2
   // process.exit(2);
