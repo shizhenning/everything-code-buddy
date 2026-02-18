@@ -79,9 +79,9 @@ Claude Code                    CodeBuddy
 
 ## 迁移方法
 
-### 方法 1: 自动迁移脚本 (推荐)
+### 方法 1: 自动迁移脚本 (推荐 - 复制方式)
 
-使用提供的自动迁移脚本:
+使用提供的自动迁移脚本将文件复制到目标项目:
 
 ```bash
 # 确保在 ECC 项目根目录
@@ -96,11 +96,42 @@ cat .codebuddy/MIGRATION_REPORT.md
 
 **脚本功能**:
 - ✅ 自动创建 `.codebuddy/` 目录结构
-- ✅ 迁移所有 agents、commands、skills
+- ✅ 复制所有 agents、commands、skills
 - ✅ 转换 hooks.json 到 CodeBuddy 格式
 - ✅ 复制 rules 并生成安装指南
 - ✅ 更新脚本中的环境变量
 - ✅ 生成详细的迁移报告
+
+### 方法 1.5: Junction 链接方式 (Windows 推荐) ⭐
+
+使用 Junction 链接实时引用 ECC 配置，无需创建目录或复制文件:
+
+```powershell
+# 从 ECC 项目根目录运行
+.\scripts\link-ecc-to-project.ps1 -TargetProjectPath "D:\path\to\your\project"
+
+# 示例: 链接到当前项目
+.\scripts\link-ecc-to-project.ps1 -TargetProjectPath "d:\ugit\everything-code-buddy"
+```
+
+**链接脚本功能**:
+- ✅ 使用已存在的目录结构（agents, commands, skills, rules, scripts, hooks）
+- ✅ 创建 Windows Junction 链接
+- ✅ 不占用额外磁盘空间（无需复制）
+- ✅ ECC 更改实时同步到目标项目
+- ✅ 支持删除和重建链接
+- ✅ 智能跳过普通目录（不覆盖用户数据）
+
+**优势**:
+- 🚀 零复制 - 不占用额外空间
+- 🔄 实时同步 - ECC 的更改立即反映在目标项目
+- 🛡️ 安全 - 删除链接不影响源目录
+- 🎯 适合开发 - ECC 作为主配置源，多个项目共享
+
+**注意事项**:
+- 仅支持 Windows (Junction 特性)
+- 需要在 ECC 项目中保持配置文件
+- 通过链接删除文件会同步删除源文件
 
 ### 方法 2: 手动迁移
 

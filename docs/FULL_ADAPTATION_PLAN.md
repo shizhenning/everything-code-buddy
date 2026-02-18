@@ -127,18 +127,66 @@
 **负责人**: 已完成
 
 **已实现功能**:
-- ✅ 自动创建 `.codebuddy/` 目录结构
-- ✅ 迁移 agents, commands, skills, rules
+- ✅ ✨ **Junction 链接方式** (Windows) - 零空间占用，实时同步
+- ✅ 链接已存在的目录结构（agents, commands, skills, rules, scripts, hooks）
+- ✅ 智能检测和重建现有链接
 - ✅ 转换 hooks.json 到 settings.json
 - ✅ 环境变量替换 (CLAUDE_* → CODEBUDDY_*)
 - ✅ Windows 支持 (PowerShell 脚本)
 - ✅ 生成迁移报告
+
+**注意**: 
+- ⏭️ **目录创建和复制步骤已省略** - 通过 `link-ecc-to-project.ps1` 创建链接即可
+- 目标项目的 `.codebuddy` 目录中的 agents/commands/skills/rules/scripts/hooks 通过 Junction 链接指向 ECC 项目
+- 无需迁移脚本创建目录结构或复制文件
 
 **增强需求**:
 - [ ] 添加回滚功能
 - [ ] 支持增量迁移
 - [ ] 添加冲突检测
 - [ ] 性能优化 (大文件处理)
+
+#### 1.1.5 Junction 链接支持 (已实现) ⭐
+
+**状态**: ✅ 已完成
+**优先级**: 🔴 P0
+**负责人**: 已完成
+
+**已实现功能**:
+- ✅ Windows Junction 链接创建脚本 `link-ecc-to-project.ps1`
+- ✅ 零磁盘占用（不复制文件，仅创建引用）
+- ✅ 实时同步（ECC 更改立即反映到目标项目）
+- ✅ 安全删除（删除链接不影响源目录）
+- ✅ 自动检测和重建现有链接
+- ✅ 智能跳过普通目录（不覆盖用户数据）
+
+**使用方法**:
+```powershell
+# 从 ECC 项目根目录运行
+.\scripts\link-ecc-to-project.ps1 -TargetProjectPath "D:\path\to\your\project"
+
+# 验证链接
+Get-ChildItem -Path "D:\path\to\your\project\.codebuddy" -Directory | Select-Object Name, LinkType, Target
+```
+
+**技术细节**:
+- 使用 Windows Junction 而非 SymbolicLink（更好的兼容性）
+- 链接的 `LinkType` 属性为 `Junction`
+- 需要管理员权限（但 Junction 不需要）
+- 支持递归创建多个目录链接
+
+**使用场景**:
+| 场景 | 推荐方式 | 原因 |
+|------|-----------|------|
+| 开发 ECC 项目 | Junction 链接 | 实时同步，零空间 |
+| 生产部署 | 复制方式 | 独立配置，不受影响 |
+| 多项目共享 | Junction 链接 | 统一管理，易于更新 |
+| 版本控制 | 复制方式 | .git 忽略链接 |
+
+**注意事项**:
+- ⚠️ 通过链接删除文件会同步删除源文件
+- ⚠️ 仅支持 Windows（macOS/Linux 使用软链接）
+- ⚠️ .git 默认不跟踪链接，需要 `git config core.symlinks true`
 
 #### 1.2 安装脚本优化 (4h)
 
