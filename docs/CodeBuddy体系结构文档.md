@@ -1,8 +1,8 @@
-# CodeBuddy 智能编程助手体系结构文档
+# CodeBuddy CLI 体系结构文档
 
-> **腾讯云 AI 代码助手 - 完整技术架构解析**
+> **腾讯云代码助手 - CLI 命令行工具技术架构解析**
 
-[![Version](https://img.shields.io/badge/version-2.50.0+-blue)](https://www.codebuddy.cn)
+[![Version](https://img.shields.io/badge/version-1.7.0+-blue)](https://www.codebuddy.cn)
 [![Documentation](https://img.shields.io/badge/docs-complete-green)](https://www.codebuddy.cn/docs/cli/overview)
 [![License](https://img.shields.io/badge/license-Commercial-orange)](https://www.codebuddy.cn)
 
@@ -32,26 +32,243 @@
 
 ### 产品定位
 
-CodeBuddy Code 是基于**腾讯云 AI 技术**的智能编程工具，提供从代码编写到项目部署的全链路 AI 辅助。它通过自然语言驱动开发流程，集成了强大的工具链和扩展能力。
+CodeBuddy CLI 是腾讯云代码助手的核心**命令行工具**，提供基于自然语言的交互式编程体验，支持交互模式、无头模式（Headless）、斜杠命令、插件扩展等功能。它通过 CLI 接口实现从终端到 AI 的无缝集成。
+
+**国内版本特色**：
+
+- 🌐 **优先支持国产模型**：GLM、Kimi、DeepSeek、腾讯混元等
+- 🚀 **低延迟响应**：国内模型访问速度更快
+- 🔒 **数据安全合规**：符合国内数据安全要求
+- 💰 **成本优势**：国产模型性价比高
+
+**国际版本支持**：
+
+同时支持 Claude、GPT、Gemini 等国际模型，满足全球化开发需求。
 
 ### 核心特性
 
 | 特性 | 描述 | 技术实现 |
 |------|------|----------|
-| 🚀 **自然语言驱动** | 用对话式交互完成开发全流程 | LLM + 工具调用 |
-| 🔧 **终端原生** | 完美融入命令行环境 | Node.js CLI |
-| ⚡ **内置工具链** | 文件编辑、命令运行、Git 操作 | 系统工具封装 |
-| 🛠️ **Unix 哲学** | 支持管道、脚本集成 | stdin/stdout |
-| 🔌 **强大扩展** | Plugins、MCP、LSP 支持 | 插件架构 |
+| 🚀 **交互模式** | 对话式编程，实时交互 | REPL + LLM |
+| 📤 **无头模式** | 单次查询，脚本集成 | `-p/--print` 选项 |
+| ⚡ **会话管理** | 会话持久化与恢复 | Session ID |
+| 🔧 **斜杠命令** | 自定义快捷命令 | `.md` 文件定义 |
+| 🛠️ **工具链集成** | 文件、Git、Bash 工具 | 系统工具封装 |
+| 🔌 **插件扩展** | Plugin Marketplace | `.claude-plugin` |
+| 🔌 **MCP/LSP** | 模型与协议扩展 | MCP/LSP 标准 |
 
 ### 技术栈
 
 ```
 运行环境: Node.js 18.0+
 核心语言: TypeScript
-AI 引擎: 多模型支持 (Claude, GPT, Gemini)
+AI 引擎: 多模型支持
 协议支持: MCP, LSP, ACP
 包管理: npm
+```
+
+### 支持的 AI 模型
+
+CodeBuddy CLI 支持多种国内外 AI 模型，可根据需求选择：
+
+#### 国内模型
+
+| 模型 | 提供商 | 特点 |
+|------|--------|------|
+| `glm-5.0` | 智谱 AI | 最新一代 GLM 模型，综合能力强 |
+| `glm-4.7` | 智谱 AI | GLM-4 系列增强版 |
+| `glm-4.6v` | 智谱 AI | 支持视觉多模态 |
+| `glm-4.6` | 智谱 AI | GLM-4 基础版本 |
+| `kimi-k2.5` | Moonshot AI | Kimi 系列高性能版本 |
+| `kimi-k2-Thinking` | Moonshot AI | 思维链推理优化 |
+| `deepseek-v3.2` | DeepSeek | DeepSeek V3 最新版本 |
+| `deepseek-v3-1-teminus` | DeepSeek | DeepSeek V3 优化版 |
+| `deepseek-v3-0324` | DeepSeek | DeepSeek V3 特定版本 |
+| `hunyuan-2.0-instruct-20251111` | 腾讯混元 | 混元 2.0 指令微调版 |
+
+#### 国际模型
+
+| 模型 | 提供商 | 特点 |
+|------|--------|------|
+| `claude-3-5-sonnet` | Anthropic | 强推理能力和长上下文 |
+| `claude-3-5-haiku` | Anthropic | 快速响应版本 |
+| `gpt-4o` | OpenAI | 多功能通用模型 |
+| `gpt-4-turbo` | OpenAI | 高性能版本 |
+| `gemini-2.5-pro` | Google | 多模态能力强 |
+
+**模型选择示例**:
+
+```bash
+# 使用国内模型
+codebuddy --model glm-5.0 "分析代码"
+codebuddy --model deepseek-v3.2 "生成文档"
+codebuddy --model kimi-k2.5 "翻译文本"
+
+# 使用国际模型
+codebuddy --model claude-3-5-sonnet "代码审查"
+codebuddy --model gpt-4o "问题解答"
+```
+
+### 环境变量
+
+CodeBuddy CLI 支持以下环境变量用于配置和自定义：
+
+| 变量 | 用途 | 示例 |
+|------|------|------|
+| `CODEBUDDY_HOME` | 用户配置目录 | `~/.codebuddy` |
+| `CODEBUDDY_PLUGIN_ROOT` | 插件根目录 | `/path/to/plugins` |
+| `CODEBUDDY_PROJECT_DIR` | 当前项目目录 | `/current/project` |
+| `CODEBUDDY_PACKAGE_MANAGER` | 包管理器 | `npm`, `pnpm`, `yarn` |
+| `CODEBUDDY_AUTOCOMPACT_PCT_OVERRIDE` | 自动压缩比例 | `50` |
+| `E2B_API_KEY` | E2B 沙箱 API 密钥 | `your-api-key` |
+| `E2B_TEMPLATE` | E2B 模板 ID | `base-node-v18` |
+| `CODEBUDDY_SANDBOX_IMAGE` | 自定义 Docker 镜像 | `ubuntu:22.04` |
+
+**环境变量设置示例**:
+
+```bash
+# macOS/Linux
+export CODEBUDDY_HOME="$HOME/.codebuddy"
+export E2B_API_KEY="your-api-key"
+
+# Windows PowerShell
+$env:CODEBUDDY_HOME = "$env:USERPROFILE\.codebuddy"
+$env:E2B_API_KEY = "your-api-key"
+```
+
+---
+
+## CLI 命令参考
+
+### 交互模式 vs 无头模式
+
+#### 交互模式
+
+进入交互式编程会话：
+
+```bash
+# 启动交互模式
+codebuddy
+
+# 带初始提示启动
+codebuddy "分析这个项目"
+
+# 指定模型启动（国内模型）
+codebuddy --model glm-5.0
+
+# 指定模型启动（国际模型）
+codebuddy --model claude-3-5-sonnet
+```
+
+#### 无头模式 (Headless Mode)
+
+单次查询并退出，适合脚本和管道集成：
+
+```bash
+# 基本无头模式
+codebuddy -p "解释这个函数"
+
+# 管道输入
+cat file.txt | codebuddy -p "分析日志"
+
+# JSON 输出
+codebuddy -p "提取所有函数名" --output-format json
+
+# Stream-JSON 输出（实时流式）
+codebuddy -p "构建项目" --output-format stream-json
+
+# JSON Schema 验证
+codebuddy -p "分析数据" --json-schema '{"type": "object", "properties": {"name": {"type": "string"}}}'
+```
+
+### 顶级命令
+
+| 命令 | 说明 |
+|------|------|
+| `codebuddy` | 启动交互模式 |
+| `codebuddy -p/--print` | 无头模式 |
+| `codebuddy -c/--continue` | 继续最近会话 |
+| `codebuddy -r/--resume <id>` | 恢复指定会话 |
+| `codebuddy update` | 更新 CLI |
+| `codebuddy mcp` | 配置 MCP |
+| `codebuddy config` | 管理配置 |
+
+### 全局选项
+
+| 选项 | 说明 |
+|------|------|
+| `-p, --print` | 无头模式，执行后退出 |
+| `-c, --continue` | 继续最近会话 |
+| `-r, --resume <id>` | 恢复指定会话 |
+| `--output-format` | 输出格式 |
+| `--json-schema` | JSON Schema 验证 |
+| `--permission-mode` | 权限模式 |
+| `--allowedTools` | 允许的工具列表 |
+| `--disallowedTools` | 禁止的工具列表 |
+| `--sandbox` | 沙箱模式 |
+| `--model` | 指定模型 |
+| `--ide` | 自动检测并连接 IDE |
+| `--mcp-config` | MCP 配置文件 |
+| `--strict-mcp-config` | 严格 MCP 配置模式 |
+
+### 会话管理
+
+```bash
+# 查看所有会话
+codebuddy --list-sessions
+
+# 恢复特定会话
+codebuddy -r <session-id>
+
+# 删除会话
+codebuddy --delete-session <session-id>
+```
+
+### 自定义 Sub-Agents
+
+动态定义代理进行特定任务：
+
+```bash
+# JSON 格式定义
+codebuddy --agents '[
+  {
+    "name": "CodeReviewer",
+    "description": "代码审查专家",
+    "model": "glm-5.0",
+    "tools": ["Read", "Write", "Bash"]
+  }
+]'
+
+# 或使用国际模型
+codebuddy --agents '[
+  {
+    "name": "CodeReviewer",
+    "description": "代码审查专家",
+    "model": "claude-3-5-sonnet",
+    "tools": ["Read", "Write", "Bash"]
+  }
+]'
+```
+
+### Sandbox 模式
+
+在隔离环境中执行代码：
+
+```bash
+# 本地 Docker/Podman 沙箱
+codebuddy --sandbox "分析这个项目"
+
+# E2B 云沙箱
+codebuddy --sandbox https://api.e2b.dev "创建应用"
+
+# 强制新建沙箱
+codebuddy --sandbox --sandbox-new "从头开始"
+
+# 连接到指定沙箱
+codebuddy --sandbox --sandbox-id sb_abc123 "继续工作"
+
+# 退出时终止沙箱
+codebuddy --sandbox --sandbox-kill "临时测试"
 ```
 
 ---
@@ -203,30 +420,24 @@ class CLIInterface {
 
 #### 1.2 IDE Integration (IDE 集成)
 
-**支持的 IDE**:
-- VS Code (官方插件)
-- JetBrains 系列 (IntelliJ, PyCharm, WebStorm)
-- Vim/Neovim (通过 LSP)
-- Cursor (原生集成)
+CodeBuddy CLI 可以通过 `--ide` 选项自动检测并连接到当前 IDE。
 
-**集成方式**:
+**支持的 IDE**:
+- VS Code (需要插件)
+- JetBrains 系列 (IntelliJ, PyCharm, WebStorm)
+- Cursor (需要插件)
+
+**使用方式**:
+
+```bash
+# 自动检测 IDE
+codebuddy --ide
+
+# 与 IDE 集成使用
+codebuddy --ide "审查当前文件"
 ```
-┌─────────────────────┐
-│   IDE (VS Code)     │
-├─────────────────────┤
-│  CodeBuddy 插件     │
-│  ├─ Sidebar         │
-│  ├─ Chat Panel      │
-│  └─ Inline Assist   │
-└─────────────────────┘
-         ▼
-    (WebSocket)
-         ▼
-┌─────────────────────┐
-│  CodeBuddy Server   │
-│  (本地进程)         │
-└─────────────────────┘
-```
+
+⚠️ **注意**: CodeBuddy CLI 本身是独立工具，IDE 集成通过外部插件实现，不是插件架构。
 
 ### 2. 命令处理层
 
@@ -275,30 +486,61 @@ class CommandParser {
 }
 ```
 
-**自定义命令加载**:
-```typescript
-class CustomCommandLoader {
-  async loadCommands() {
-    const commands: Command[] = [];
-    
-    // 1. 加载项目级命令
-    const projectCommands = await this.loadFromDirectory(
-      '.codebuddy/commands/'
-    );
-    
-    // 2. 加载用户级命令
-    const userCommands = await this.loadFromDirectory(
-      '~/.codebuddy/commands/'
-    );
-    
-    // 3. 加载插件命令
-    const pluginCommands = await this.loadPluginCommands();
-    
-    // 4. 合并并注册 (优先级: 项目 > 用户 > 插件)
-    return [...projectCommands, ...userCommands, ...pluginCommands];
-  }
-}
+**斜杠命令定义方式**:
+
+斜杠命令通过 **Markdown 文件** 定义，文件路径决定命令名称。
+
+**目录结构**:
 ```
+your-project/
+└── .codebuddy/
+    └── commands/
+        ├── frontend/
+        │   ├── build.md      → /frontend:build
+        │   ├── test.md       → /frontend:test
+        │   └── lint.md       → /frontend:lint
+        ├── backend/
+        │   ├── migrate.md    → /backend:migrate
+        │   └── deploy.md    → /backend:deploy
+        └── git/
+            ├── commit.md     → /git:commit
+            └── review.md     → /git:review
+```
+
+**命令文件格式**:
+
+**commands/frontend/build.md**:
+```markdown
+---
+description: 构建前端应用
+argument-hint: 请输入构建环境，如 development
+allowed-tools: Read, Write, Bash
+model: inherit
+---
+
+你是一个前端构建助手，负责 {env} 环境的构建任务。
+
+构建步骤：
+1. 读取 package.json 确认依赖
+2. 运行构建命令
+3. 验证输出
+
+! npm run build:{env}
+```
+
+**命令优先级**:
+1. 项目级命令 (`.codebuddy/commands/`)
+2. 个人级命令 (`~/.codebuddy/commands/`)
+3. 插件命令
+
+**Frontmatter 字段说明**:
+| 字段 | 说明 | 必需 |
+|------|------|------|
+| `description` | 命令描述 | 是 |
+| `argument-hint` | 参数提示 | 否 |
+| `allowed-tools` | 允许的工具列表 | 否 |
+| `model` | 模型选择 | 否 |
+| `context` | 上下文类型 | 否 |
 
 #### 2.2 Task Manager (任务管理器)
 
@@ -837,6 +1079,58 @@ class HookExecutor {
 
 #### 3.6 Skill Loader (技能加载器)
 
+**技能目录结构**:
+
+```
+skills/
+├── pdf-processor/
+│   ├── SKILL.md              # 必需
+│   ├── reference.md         # 可选，参考文档
+│   └── scripts/             # 可选，辅助脚本
+│       ├── process.py
+│       └── utils.sh
+└── code-reviewer/
+    └── SKILL.md
+```
+
+**SKILL.md 格式**:
+
+```markdown
+---
+name: PDFProcessor
+description: 处理 PDF 文件
+allowed-tools: Read, Write, Bash
+user-invocable: true        # 是否允许用户直接调用
+context: fork               # fork 或 main
+agent: general-purpose      # 使用的代理类型
+---
+
+你是一个 PDF 处理专家...
+
+## 工作流程
+
+1. 读取 PDF 文件
+2. 提取文本内容
+3. 分析并总结
+
+## 工具
+
+可以使用以下工具：
+- `@read_file` - 读取文件
+- `@write_to_file` - 写入文件
+```
+
+**Frontmatter 字段说明**:
+
+| 字段 | 说明 | 必需 |
+|------|------|------|
+| `name` | 技能名称 | 是 |
+| `description` | 技能描述 | 是 |
+| `allowed-tools` | 允许的工具列表 | 否 |
+| `user-invocable` | 用户是否可直接调用 | 否（默认 true） |
+| `context` | 上下文类型 | 否 |
+| `agent` | 使用的代理类型 | 否 |
+
 **技能发现与加载**:
 ```typescript
 class SkillLoader {
@@ -1152,6 +1446,76 @@ class PluginManager {
     return plugin;
   }
 }
+```
+
+#### 5.1.1 Plugin Marketplace (插件市场)
+
+CodeBuddy 支持通过 Plugin Marketplace 管理插件来源和安装。
+
+**添加插件市场**:
+
+```bash
+# 从 GitHub 仓库添加
+/plugin marketplace add owner/repo
+
+# 从本地目录添加
+/plugin marketplace add ./my-marketplace
+
+# 从 HTTP URL 添加
+/plugin marketplace add https://example.com/marketplace.json
+```
+
+**安装插件**:
+
+```bash
+# 安装最新版本
+/plugin install my-plugin
+
+# 安装指定版本
+/plugin install my-plugin@2.1.0
+
+# 查看可用插件
+/plugin marketplace list
+```
+
+**marketplace.json 格式**:
+
+```json
+{
+  "name": "my-plugins",
+  "owner": {
+    "name": "Your Name",
+    "email": "you@example.com"
+  },
+  "plugins": [
+    {
+      "name": "my-plugin",
+      "source": "./plugins/my-plugin",
+      "description": "My awesome plugin",
+      "version": "2.1.0"
+    },
+    {
+      "name": "another-plugin",
+      "source": "./plugins/another-plugin",
+      "description": "Another useful plugin",
+      "version": "1.0.0"
+    }
+  ]
+}
+```
+
+**插件目录结构**:
+
+```
+marketplace-root/
+├── marketplace.json
+└── plugins/
+    ├── my-plugin/
+    │   └── .codebuddy-plugin/
+    │       └── plugin.json
+    └── another-plugin/
+        └── .codebuddy-plugin/
+            └── plugin.json
 ```
 
 #### 5.2 MCP Integration (模型上下文协议)
@@ -2338,8 +2702,11 @@ codebuddy --headless "运行测试并生成报告"
 # 恢复会话
 codebuddy --resume <session-id>
 
-# 指定模型
-codebuddy --model gemini-3.0-pro
+# 指定模型（国内）
+codebuddy --model glm-5.0
+
+# 指定模型（国际）
+codebuddy --model claude-3-5-sonnet
 
 # 管道输入
 cat file.txt | codebuddy "分析这个文件"
@@ -2390,7 +2757,7 @@ Commands (斜杠命令) 是用户主动触发的快捷操作，通过 Markdown �
 description: "命令的简短描述 (必需)"
 argument-hint: "[参数提示]"
 allowed-tools: Bash, Read, Write
-model: gemini-3.0-flash
+model: glm-5.0
 disable-model-invocation: false
 ---
 
@@ -2414,7 +2781,7 @@ disable-model-invocation: false
 | `description` | ✅ | string | 命令描述,显示在自动补全中 | `"运行单元测试"` |
 | `argument-hint` | ❌ | string | 参数提示,帮助用户理解如何使用 | `"[test-file]"` |
 | `allowed-tools` | ❌ | string | 允许使用的工具,逗号分隔 | `"Bash(npm:*), Read"` |
-| `model` | ❌ | string | 指定使用的 AI 模型 | `"gemini-3.0-pro"` |
+| `model` | ❌ | string | 指定使用的 AI 模型 | `"glm-5.0"`, `"claude-3-5-sonnet"` |
 | `disable-model-invocation` | ❌ | boolean | 禁止在 Skill 工具中出现 | `true` |
 
 ### 参数处理
@@ -3605,15 +3972,22 @@ skills: skill1, skill2
 | `name` | ✅ | string | 代理名称 | `"code-reviewer"` |
 | `description` | ✅ | string | 何时调用此代理 | `"代码审查专家。审查代码质量时使用。"` |
 | `tools` | ❌ | string | 允许的工具,逗号分隔 | `"Read, Grep, Bash"` |
-| `model` | ❌ | string | 使用的模型或 `inherit` | `"gemini-3.0-pro"` 或 `"inherit"` |
+| `model` | ❌ | string | 使用的模型或 `inherit` | `"glm-5.0"`, `"claude-3-5-sonnet"` 或 `"inherit"` |
 | `permissionMode` | ❌ | string | 权限模式 | `"default"`, `"acceptEdits"`, `"bypassPermissions"` |
 | `skills` | ❌ | string | 自动加载的技能 | `"typescript-expert, testing"` |
 
 ### Model 配置
 
 ```markdown
-# 使用特定模型
-model: gemini-3.0-pro
+# 使用国内模型
+model: glm-5.0
+model: deepseek-v3.2
+model: kimi-k2.5
+
+# 使用国际模型
+model: claude-3-5-sonnet
+model: gpt-4o
+model: gemini-2.5-pro
 
 # 继承主对话的模型
 model: inherit
@@ -4452,10 +4826,10 @@ find .claude/scripts -name "*.js" -exec sed -i 's/CODEBUDDY_/CLAUDE_/g' {} \;
 
 #### 七、配置文件位置
 
-| 平台 | 用户级 | 项目级 | 插件级 |
-|-----|--------|--------|--------|
-| Claude Code | `~/.claude/settings.json` | `.claude/settings.json` | `.claude-plugin/plugin.json` → `hooks/hooks.json` |
-| CodeBuddy | `~/.codebuddy/settings.json` | `.codebuddy/settings.json` | `.codebuddy-plugin/plugin.json` → `.codebuddy-plugin/marketplace.json` |
+| 平台 | 用户级 | 项目级 | 插件级（v2.1+ 自动加载）|
+|-----|--------|--------|----------------------------|
+| Claude Code | `~/.claude/settings.json` | `.claude/settings.json` | `.claude-plugin/plugin.json` 必须包含 hooks 字段 |
+| CodeBuddy | `~/.codebuddy/settings.json` | `.codebuddy/settings.json` | `.codebuddy-plugin/hooks/hooks.json` 自动加载 |
 
 #### 八、迁移建议
 
@@ -4472,7 +4846,66 @@ find .claude/scripts -name "*.js" -exec sed -i 's/CODEBUDDY_/CLAUDE_/g' {} \;
 
 ### 配置格式
 
-#### 基础配置
+⚠️ **重要说明 - CodeBuddy v2.1+ Hooks 自动加载**：
+
+CodeBuddy v2.1+ 会自动加载 `hooks/hooks.json` 文件，无需在 `plugin.json` 中声明。但如果 `plugin.json` 包含 `hooks` 字段，它会与 `hooks/hooks.json` 深度合并。
+
+**方式1：插件级 hooks/hooks.json（推荐）**
+
+```json
+// .codebuddy-plugin/hooks/hooks.json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx prettier --write \"$FILE_PATH\"",
+            "timeout": 5000
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**方式2：plugin.json 内联 hooks**
+
+```json
+// .codebuddy-plugin/plugin.json
+{
+  "name": "my-plugin",
+  "version": "2.1.0",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [...]
+      }
+    ]
+  }
+}
+```
+
+**方式3：plugin.json 引用外部文件**
+
+```json
+// .codebuddy-plugin/plugin.json
+{
+  "name": "my-plugin",
+  "version": "2.1.0",
+  "hooks": "${CODEBUDDY_PLUGIN_ROOT}/hooks/hooks.json"
+}
+```
+
+**与 Claude Code 的区别**：
+- Claude Code **必须**在 `plugin.json` 中声明 `hooks` 字段
+- CodeBuddy v2.1+ **自动加载** `hooks/hooks.json`，无需声明
+
+#### 用户级/项目级配置
 
 ```json
 {
@@ -5109,9 +5542,9 @@ codebuddy --debug
 
 ---
 
-**文档版本**: v1.1 (增加组件编写指南)  
-**最后更新**: 2026-02-13  
-**适用版本**: CodeBuddy 2.40.0+
+**文档版本**: v1.2 (基于官方文档修正)  
+**最后更新**: 2026-02-18  
+**适用版本**: CodeBuddy CLI 1.7.0+
 
 **作者**: 软件体系架构分析团队  
 **联系**: codebuddy@tencent.com  
