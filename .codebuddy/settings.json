@@ -1,6 +1,6 @@
 {
   "language": "简体中文",
-  "model": "claude-3-5-sonnet",
+  "model": "deepseek-v3.2",
   "permissions": {
     "allow": [
       "Bash(git:*)",

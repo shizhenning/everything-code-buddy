@@ -16,10 +16,16 @@ const AGENTS_DIR = path.join(PROJECT_ROOT, 'agents');
 console.log('🔄 Updating Agent model IDs...\n');
 
 // 模型 ID 映射
+// 将当前国产模型映射为更合理的目标模型
 const MODEL_MAPPING = {
-  'claude-3-5-sonnet-20241022': 'claude-3-5-sonnet',
-  'claude-3-5-haiku-20241022': 'claude-3-5-haiku',
-  'claude-3-opus-20240229': 'claude-3-opus',
+  // DeepSeek V3.2 → Kimi Thinking（复杂推理场景）
+  'deepseek-v3.2': 'kimi-k2-Thinking',
+
+  // GLM-5.0 → DeepSeek V3.2（代码场景更优）
+  'glm-5.0': 'deepseek-v3.2',
+
+  // GLM-4.7 → GLM-4.6（轻量快速场景）
+  'glm-4.7': 'glm-4.6',
 };
 
 // 批处理文件替换（避免多次读写）
