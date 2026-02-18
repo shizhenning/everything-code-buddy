@@ -31,7 +31,10 @@ const testFiles = [
   'validation/test-mcp-config.js',
   // Integration tests
   'integration/test-workflow.js',
-  'integration/test-hook-triggers.js'
+  'integration/test-hook-triggers.js',
+  'integration/test-mcp-connections.js',
+  'integration/test-agent-delegation.js',
+  'integration/test-cross-platform.js'
 ];
 
 const BOX_W = 58; // inner width between ║ delimiters

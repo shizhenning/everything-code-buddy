@@ -12,7 +12,7 @@ $ARGUMENTS
 - **Mandatory Parallel**: Codex/Gemini calls MUST use `run_in_background: true` (including single model calls, to avoid blocking main thread)
 - **Code Sovereignty**: External models have **zero filesystem write access**, all modifications by Claude
 - **Stop-Loss Mechanism**: Do not proceed to next phase until current phase output is validated
-- **Planning Only**: This command allows reading context and writing to `.claude/plan/*` plan files, but **NEVER modify production code**
+- **Planning Only**: This command allows reading context and writing to `${CODEBUDDY_PROJECT_DIR}/.codebuddy/plan/*` plan files, but **NEVER modify production code**
 
 ---
 
@@ -22,7 +22,7 @@ $ARGUMENTS
 
 ```
 Bash({
-  command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--backend <codex|gemini> {{GEMINI_MODEL_FLAG}}- \"$PWD\" <<'EOF'
+  command: "${CODEBUDDY_PLUGIN_ROOT}/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--backend <codex|gemini> {{GEMINI_MODEL_FLAG}}- \"$PWD\" <<'EOF'
 ROLE_FILE: <role prompt path>
 <TASK>
 Requirement: <enhanced requirement>
@@ -43,8 +43,8 @@ EOF",
 
 | Phase | Codex | Gemini |
 |-------|-------|--------|
-| Analysis | `~/.claude/.ccg/prompts/codex/analyzer.md` | `~/.claude/.ccg/prompts/gemini/analyzer.md` |
-| Planning | `~/.claude/.ccg/prompts/codex/architect.md` | `~/.claude/.ccg/prompts/gemini/architect.md` |
+| Analysis | `${CODEBUDDY_PLUGIN_ROOT}/.ccg/prompts/codex/analyzer.md` | `${CODEBUDDY_PLUGIN_ROOT}/.ccg/prompts/gemini/analyzer.md` |
+| Planning | `${CODEBUDDY_PLUGIN_ROOT}/.ccg/prompts/codex/architect.md` | `${CODEBUDDY_PLUGIN_ROOT}/.ccg/prompts/gemini/architect.md` |
 
 **Session Reuse**: Each call returns `SESSION_ID: xxx` (typically output by wrapper), **MUST save** for subsequent `/ccg:execute` use.
 
@@ -120,12 +120,12 @@ mcp__ace-tool__search_context({
 Distribute **original requirement** (without preset opinions) to both models:
 
 1. **Codex Backend Analysis**:
-   - ROLE_FILE: `~/.claude/.ccg/prompts/codex/analyzer.md`
+   - ROLE_FILE: `${CODEBUDDY_PLUGIN_ROOT}/.ccg/prompts/codex/analyzer.md`
    - Focus: Technical feasibility, architecture impact, performance considerations, potential risks
    - OUTPUT: Multi-perspective solutions + pros/cons analysis
 
 2. **Gemini Frontend Analysis**:
-   - ROLE_FILE: `~/.claude/.ccg/prompts/gemini/analyzer.md`
+   - ROLE_FILE: `${CODEBUDDY_PLUGIN_ROOT}/.ccg/prompts/gemini/analyzer.md`
    - Focus: UI/UX impact, user experience, visual design
    - OUTPUT: Multi-perspective solutions + pros/cons analysis
 
@@ -145,11 +145,11 @@ Integrate perspectives and iterate for optimization:
 To reduce risk of omissions in Claude's synthesized plan, can parallel have both models output "plan drafts" (still **NOT allowed** to modify files):
 
 1. **Codex Plan Draft** (Backend authority):
-   - ROLE_FILE: `~/.claude/.ccg/prompts/codex/architect.md`
+   - ROLE_FILE: `${CODEBUDDY_PLUGIN_ROOT}/.ccg/prompts/codex/architect.md`
    - OUTPUT: Step-by-step plan + pseudo-code (focus: data flow/edge cases/error handling/test strategy)
 
 2. **Gemini Plan Draft** (Frontend authority):
-   - ROLE_FILE: `~/.claude/.ccg/prompts/gemini/architect.md`
+   - ROLE_FILE: `${CODEBUDDY_PLUGIN_ROOT}/.ccg/prompts/gemini/architect.md`
    - OUTPUT: Step-by-step plan + pseudo-code (focus: information architecture/interaction/accessibility/visual consistency)
 
 Wait for both models' complete results with `TaskOutput`, record key differences in their suggestions.
@@ -193,18 +193,18 @@ Synthesize both analyses, generate **Step-by-step Implementation Plan**:
 **`/ccg:plan` responsibilities end here, MUST execute the following actions**:
 
 1. Present complete implementation plan to user (including pseudo-code)
-2. Save plan to `.claude/plan/<feature-name>.md` (extract feature name from requirement, e.g., `user-auth`, `payment-module`)
+2. Save plan to `${CODEBUDDY_PROJECT_DIR}/.codebuddy/plan/<feature-name>.md` (extract feature name from requirement, e.g., `user-auth`, `payment-module`)
 3. Output prompt in **bold text** (MUST use actual saved file path):
 
    ---
-   **Plan generated and saved to `.claude/plan/actual-feature-name.md`**
+   **Plan generated and saved to `${CODEBUDDY_PROJECT_DIR}/.codebuddy/plan/actual-feature-name.md`**
 
    **Please review the plan above. You can:**
    - **Modify plan**: Tell me what needs adjustment, I'll update the plan
    - **Execute plan**: Copy the following command to a new session
 
    ```
-   /ccg:execute .claude/plan/actual-feature-name.md
+   /ccg:execute ${CODEBUDDY_PROJECT_DIR}/.codebuddy/plan/actual-feature-name.md
    ```
    ---
 
@@ -224,8 +224,8 @@ Synthesize both analyses, generate **Step-by-step Implementation Plan**:
 
 After planning completes, save plan to:
 
-- **First planning**: `.claude/plan/<feature-name>.md`
-- **Iteration versions**: `.claude/plan/<feature-name>-v2.md`, `.claude/plan/<feature-name>-v3.md`...
+- **First planning**: `${CODEBUDDY_PROJECT_DIR}/.codebuddy/plan/<feature-name>.md`
+- **Iteration versions**: `${CODEBUDDY_PROJECT_DIR}/.codebuddy/plan/<feature-name>-v2.md`, `${CODEBUDDY_PROJECT_DIR}/.codebuddy/plan/<feature-name>-v3.md`...
 
 Plan file write should complete before presenting plan to user.
 
@@ -236,7 +236,7 @@ Plan file write should complete before presenting plan to user.
 If user requests plan modifications:
 
 1. Adjust plan content based on user feedback
-2. Update `.claude/plan/<feature-name>.md` file
+2. Update `${CODEBUDDY_PROJECT_DIR}/.codebuddy/plan/<feature-name>.md` file
 3. Re-present modified plan
 4. Prompt user to review or execute again
 
@@ -247,7 +247,7 @@ If user requests plan modifications:
 After user approves, **manually** execute:
 
 ```bash
-/ccg:execute .claude/plan/<feature-name>.md
+/ccg:execute ${CODEBUDDY_PROJECT_DIR}/.codebuddy/plan/<feature-name>.md
 ```
 
 ---

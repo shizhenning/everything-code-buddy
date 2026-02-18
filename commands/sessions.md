@@ -1,6 +1,6 @@
 # Sessions Command
 
-Manage Claude Code session history - list, load, alias, and edit sessions stored in `~/.claude/sessions/`.
+Manage Claude Code session history - list, load, alias, and edit sessions stored in `${CODEBUDDY_PLUGIN_ROOT}/sessions/`.
 
 ## Usage
 
@@ -81,7 +81,7 @@ const size = sm.getSessionSize(session.sessionPath);
 const aliases = aa.getAliasesForSession(session.filename);
 
 console.log('Session: ' + session.filename);
-console.log('Path: ~/.claude/sessions/' + session.filename);
+console.log('Path: ${CODEBUDDY_PLUGIN_ROOT}/sessions/' + session.filename);
 console.log('');
 console.log('Statistics:');
 console.log('  Lines: ' + stats.lineCount);
@@ -299,7 +299,7 @@ $ARGUMENTS:
 
 ## Notes
 
-- Sessions are stored as markdown files in `~/.claude/sessions/`
-- Aliases are stored in `~/.claude/session-aliases.json`
+- Sessions are stored as markdown files in `${CODEBUDDY_PLUGIN_ROOT}/sessions/`
+- Aliases are stored in `${CODEBUDDY_PLUGIN_ROOT}/session-aliases.json`
 - Session IDs can be shortened (first 4-8 characters usually unique enough)
 - Use aliases for frequently referenced sessions

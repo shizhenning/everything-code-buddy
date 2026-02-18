@@ -19,7 +19,7 @@ python3 "${CLAUDE_PLUGIN_ROOT}/skills/continuous-learning-v2/scripts/instinct-cl
 Or if `CLAUDE_PLUGIN_ROOT` is not set (manual installation), use:
 
 ```bash
-python3 ~/.claude/skills/continuous-learning-v2/scripts/instinct-cli.py status
+python3 ${CODEBUDDY_PLUGIN_ROOT}/skills/continuous-learning-v2/scripts/instinct-cli.py status
 ```
 
 ## Usage
@@ -32,8 +32,8 @@ python3 ~/.claude/skills/continuous-learning-v2/scripts/instinct-cli.py status
 
 ## What to Do
 
-1. Read all instinct files from `~/.claude/homunculus/instincts/personal/`
-2. Read inherited instincts from `~/.claude/homunculus/instincts/inherited/`
+1. Read all instinct files from `${CODEBUDDY_PROJECT_DIR}/.codebuddy/sessions/instincts/personal/`
+2. Read inherited instincts from `${CODEBUDDY_PLUGIN_ROOT}/sessions/instincts/inherited/`
 3. Display them grouped by domain with confidence bars
 
 ## Output Format

@@ -1,61 +1,90 @@
 #!/usr/bin/env node
-
 /**
- * Fix Hardcoded Paths in Commands
- * 
- * Replaces ~/.claude/ with ${CODEBUDDY_PLUGIN_ROOT}/.claude
- * in command files to maintain backward compatibility
+ * Fix hardcoded ~/.claude/ paths to use environment variable
+ * Usage: node scripts/fix-hardcoded-paths.js
  */
 
-const path = require('path');
 const fs = require('fs');
+const path = require('path');
 
-const PROJECT_DIR = path.resolve(__dirname, '..');
-const COMMANDS_DIR = path.join(PROJECT_DIR, 'commands');
+const COMMANDS_DIR = path.join(__dirname, '..', 'commands');
+
+// Path mappings for backward compatibility
+const pathMappings = [
+  // Continuous Learning v2
+  { from: '~/.claude/skills/continuous-learning-v2/scripts/instinct-cli.py', to: '${CODEBUDDY_PLUGIN_ROOT}/skills/continuous-learning-v2/scripts/instinct-cli.py' },
+  { from: '~/.claude/homunculus/instincts/personal/', to: '${CODEBUDDY_PROJECT_DIR}/.codebuddy/sessions/instincts/personal/' },
+  { from: '~/.claude/homunculus/instincts/inherited/', to: '${CODEBUDDY_PLUGIN_ROOT}/sessions/instincts/inherited/' },
+  { from: '~/.claude/homunculus/evolved/', to: '${CODEBUDDY_PLUGIN_ROOT}/sessions/evolved/' },
+  { from: '~/.claude/homunculus/instincts/', to: '${CODEBUDDY_PLUGIN_ROOT}/sessions/instincts/' },
+
+  // Checkpoints
+  { from: '.claude/checkpoints.log', to: '${CODEBUDDY_PROJECT_DIR}/.codebuddy/checkpoints.log' },
+
+  // Agents
+  { from: '~/.claude/agents/', to: '${CODEBUDDY_PLUGIN_ROOT}/agents/' },
+  { from: '~/.claude/agents/e2e-runner.md', to: '${CODEBUDDY_PLUGIN_ROOT}/agents/e2e-runner.md' },
+
+  // Skills
+  { from: '~/.claude/skills/learned/', to: '${CODEBUDDY_PROJECT_DIR}/.codebuddy/skills/' },
+  { from: '~/.claude/skills/', to: '${CODEBUDDY_PLUGIN_ROOT}/skills/' },
+
+  // Evals
+  { from: '.claude/evals/', to: '${CODEBUDDY_PROJECT_DIR}/.codebuddy/evals/' },
+
+  // Plans
+  { from: '.claude/plan/', to: '${CODEBUDDY_PROJECT_DIR}/.codebuddy/plan/' },
+
+  // CCG prompts
+  { from: '~/.claude/.ccg/prompts/', to: '${CODEBUDDY_PLUGIN_ROOT}/.ccg/prompts/' },
+
+  // Bin wrappers
+  { from: '~/.claude/bin/codeagent-wrapper', to: '${CODEBUDDY_PLUGIN_ROOT}/bin/codeagent-wrapper' },
+
+  // Generic fallback
+  { from: '~/.claude/', to: '${CODEBUDDY_PLUGIN_ROOT}/' },
+  { from: '.claude/', to: '${CODEBUDDY_PROJECT_DIR}/.codebuddy/' },
+];
 
 function fixFile(filePath) {
   const content = fs.readFileSync(filePath, 'utf-8');
   let modified = false;
-  
-  // Pattern 1: Direct python command with ~/.claude
-  const pattern1 = /python3 (~\/\.claude\/[^`\s]+)/g;
-  if (pattern1.test(content)) {
-    modified = true;
-    console.log(`  Found pattern1 in ${path.basename(filePath)}`);
+  let newContent = content;
+
+  for (const mapping of pathMappings) {
+    if (newContent.includes(mapping.from)) {
+      newContent = newContent.split(mapping.from).join(mapping.to);
+      modified = true;
+    }
   }
-  
-  // Pattern 2: Direct path references
-  const pattern2 = /`(~\/\.claude\/[^`\s]+)/g;
-  if (pattern2.test(content)) {
-    modified = true;
-    console.log(`  Found pattern2 in ${path.basename(filePath)}`);
-  }
-  
-  // Pattern 3: Bash heredoc paths
-  const pattern3 = /"(~\/\.claude\/[^"]+)"/g;
-  if (pattern3.test(content)) {
-    modified = true;
-    console.log(`  Found pattern3 in ${path.basename(filePath)}`);
-  }
-  
+
   if (modified) {
-    console.log(`  Would need manual review: ${path.basename(filePath)}`);
+    fs.writeFileSync(filePath, newContent, 'utf-8');
+    return true;
   }
-  
-  return modified;
+  return false;
 }
 
-console.log('Scanning commands for hardcoded paths...\n');
+function main() {
+  const files = fs.readdirSync(COMMANDS_DIR).filter(f => f.endsWith('.md'));
 
-const files = fs.readdirSync(COMMANDS_DIR).filter(f => f.endsWith('.md'));
-let count = 0;
+  console.log(`\n🔧 Fixing hardcoded paths in ${files.length} command files...\n`);
 
-for (const file of files) {
-  if (fixFile(path.join(COMMANDS_DIR, file))) {
-    count++;
+  let modifiedCount = 0;
+  for (const file of files) {
+    const filePath = path.join(COMMANDS_DIR, file);
+    if (fixFile(filePath)) {
+      console.log(`✓ ${file}`);
+      modifiedCount++;
+    }
   }
+
+  console.log(`\n✅ Modified ${modifiedCount} files`);
+  console.log(`📋 Unmodified: ${files.length - modifiedCount} files\n`);
 }
 
-console.log(`\n${count} files need review`);
-console.log('\nNote: These files have dual-path support (env var + fallback).');
-console.log('The hardcoded fallback paths are kept for backward compatibility.');
+if (require.main === module) {
+  main();
+}
+
+module.exports = { fixFile };
