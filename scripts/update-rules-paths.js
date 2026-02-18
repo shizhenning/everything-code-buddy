@@ -7,10 +7,10 @@ const RULES_DIR = path.join(__dirname, '..', 'rules');
 
 // 路径替换规则
 const PATH_REPLACEMENTS = [
-  { old: '~/.claude/', new: '~/.codebuddy/' },
-  { old: '.claude/', new: '.codebuddy/' },
-  { old: '~/.claude', new: '~/.codebuddy' },
-  { old: '${CLAUDE_', new: '${CODEBUDDY_' },
+  { old: '~/.codebuddy/', new: '~/.codebuddy/' },
+  { old: '.codebuddy/', new: '.codebuddy/' },
+  { old: '~/.codebuddy', new: '~/.codebuddy' },
+  { old: '${CODEBUDDY_', new: '${CODEBUDDY_' },
 ];
 
 function updateRuleFile(filepath) {

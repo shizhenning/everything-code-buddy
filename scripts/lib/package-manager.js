@@ -149,11 +149,11 @@ function getAvailablePackageManagers() {
  * Get the package manager to use for current project
  *
  * Detection priority:
- * 1. Environment variable CLAUDE_PACKAGE_MANAGER
- * 2. Project-specific config (in .claude/package-manager.json)
+ * 1. Environment variable CODEBUDDY_PACKAGE_MANAGER
+ * 2. Project-specific config (in .codebuddy/package-manager.json)
  * 3. package.json packageManager field
  * 4. Lock file detection
- * 5. Global user preference (in ~/.claude/package-manager.json)
+ * 5. Global user preference (in ~/.codebuddy/package-manager.json)
  * 6. Default to npm (no child processes spawned)
  *
  * @param {object} options - Options
@@ -164,7 +164,7 @@ function getPackageManager(options = {}) {
   const { projectDir = process.cwd() } = options;
 
   // 1. Check environment variable
-  const envPm = process.env.CLAUDE_PACKAGE_MANAGER;
+  const envPm = process.env.CODEBUDDY_PACKAGE_MANAGER;
   if (envPm && PACKAGE_MANAGERS[envPm]) {
     return {
       name: envPm,
@@ -350,8 +350,8 @@ function getSelectionPrompt() {
   let message = '[PackageManager] No package manager preference detected.\n';
   message += 'Supported package managers: ' + Object.keys(PACKAGE_MANAGERS).join(', ') + '\n';
   message += '\nTo set your preferred package manager:\n';
-  message += '  - Global: Set CLAUDE_PACKAGE_MANAGER environment variable\n';
-  message += '  - Or add to ~/.claude/package-manager.json: {"packageManager": "pnpm"}\n';
+  message += '  - Global: Set CODEBUDDY_PACKAGE_MANAGER environment variable\n';
+  message += '  - Or add to ~/.codebuddy/package-manager.json: {"packageManager": "pnpm"}\n';
   message += '  - Or add to package.json: {"packageManager": "pnpm@8"}\n';
   message += '  - Or add a lock file to your project (e.g., pnpm-lock.yaml)\n';
 

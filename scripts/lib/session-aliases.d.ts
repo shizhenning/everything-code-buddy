@@ -1,6 +1,6 @@
 /**
  * Session Aliases Library for Claude Code.
- * Manages named aliases for session files, stored in ~/.claude/session-aliases.json.
+ * Manages named aliases for session files, stored in ~/.codebuddy/session-aliases.json.
  */
 
 /** Internal alias storage entry */

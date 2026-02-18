@@ -15,9 +15,9 @@ console.log('🔄 Updating commands paths...\n');
 
 // 路径替换映射
 const PATH_REPLACEMENTS = [
-  { old: '~/.claude/', new: '~/.codebuddy/' },
-  { old: '${CLAUDE_PLUGIN_ROOT}', new: '${CODEBUDDY_PLUGIN_ROOT}' },
-  { old: '.claude/', new: '.codebuddy/' },
+  { old: '~/.codebuddy/', new: '~/.codebuddy/' },
+  { old: '${CODEBUDDY_PLUGIN_ROOT}', new: '${CODEBUDDY_PLUGIN_ROOT}' },
+  { old: '.codebuddy/', new: '.codebuddy/' },
 ];
 
 // 获取所有 command 文件

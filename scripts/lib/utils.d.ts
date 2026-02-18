@@ -15,13 +15,13 @@ export const isLinux: boolean;
 /** Get the user's home directory (cross-platform) */
 export function getHomeDir(): string;
 
-/** Get the Claude config directory (~/.claude) */
+/** Get the Claude config directory (~/.codebuddy) */
 export function getClaudeDir(): string;
 
-/** Get the sessions directory (~/.claude/sessions) */
+/** Get the sessions directory (~/.codebuddy/sessions) */
 export function getSessionsDir(): string;
 
-/** Get the learned skills directory (~/.claude/skills/learned) */
+/** Get the learned skills directory (~/.codebuddy/skills/learned) */
 export function getLearnedSkillsDir(): string;
 
 /** Get the temp directory (cross-platform) */
@@ -48,7 +48,7 @@ export function getDateTimeString(): string;
 // --- Session/Project ---
 
 /**
- * Get short session ID from CLAUDE_SESSION_ID environment variable.
+ * Get short session ID from CODEBUDDY_SESSION_ID environment variable.
  * Returns last 8 characters, falls back to project name then the provided fallback.
  */
 export function getSessionIdShort(fallback?: string): string;
