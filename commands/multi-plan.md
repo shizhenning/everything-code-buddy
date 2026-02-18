@@ -1,6 +1,6 @@
-# Plan - Multi-Model Collaborative Planning
+# Plan - Hybrid Development Planning
 
-Multi-model collaborative planning - Context retrieval + Dual-model analysis → Generate step-by-step implementation plan.
+Multi-mode planning: External model (if available) or local planner agent.
 
 $ARGUMENTS
 
@@ -8,254 +8,121 @@ $ARGUMENTS
 
 ## Core Protocols
 
-- **Language Protocol**: Use **English** when interacting with tools/models, communicate with user in their language
-- **Mandatory Parallel**: Codex/Gemini calls MUST use `run_in_background: true` (including single model calls, to avoid blocking main thread)
-- **Code Sovereignty**: External models have **zero filesystem write access**, all modifications by Claude
-- **Stop-Loss Mechanism**: Do not proceed to next phase until current phase output is validated
-- **Planning Only**: This command allows reading context and writing to `.codebuddy/plan/*` plan files, but **NEVER modify production code**
+- **Language Protocol**: Use English when interacting with tools/models
+- **Hybrid Mode**: Auto-detect available capabilities and use optimal approach
+- **Fallback Strategy**: External unavailable → local planner agent
+- **Code Sovereignty**: All production code modifications by CodeBuddy only
 
 ---
 
-## Multi-Model Call Specification
+## Configuration Check
 
-**Call Syntax** (parallel: use `run_in_background: true`):
+First, check available modes:
+
+```bash
+# Check current mode and configuration
+node scripts/multi-mode-selector.js
+```
+
+**Mode Selection Logic:**
+1. If `mode === "local"` → Use planner agent
+2. If `external.enabled && wrapper exists && API keys configured` → Try external
+3. If external fails → Fall back to planner agent
+
+---
+
+## Workflow
+
+### Phase 1: Context Retrieval
+
+Use appropriate tools to gather context:
+- `search_content` - Find relevant patterns
+- `read_file` - Understand existing code
+- `list_files` - Explore project structure
+
+### Phase 2: Planning
+
+**If External Mode Available:**
 
 ```
 Bash({
-  command: "~/.codebuddy/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--backend <codex|gemini> {{GEMINI_MODEL_FLAG}}- \"$PWD\" <<'EOF'
-ROLE_FILE: <role prompt path>
+  command: "~/.codebuddy/bin/codeagent-wrapper --backend codex \"$PWD\" <<'EOF'
+ROLE_FILE: ~/.codebuddy/.ccg/prompts/codex/architect.md
 <TASK>
-Requirement: <enhanced requirement>
-Context: <retrieved project context>
+Requirement: $ARGUMENTS
+Context: <gathered context>
 </TASK>
-OUTPUT: Step-by-step implementation plan with pseudo-code. DO NOT modify any files.
+OUTPUT: Step-by-step implementation plan
 EOF",
   run_in_background: true,
-  timeout: 3600000,
-  description: "Brief description"
+  timeout: 3600000
 })
 ```
 
-**Model Parameter Notes**:
-- `{{GEMINI_MODEL_FLAG}}`: When using `--backend gemini`, replace with `--gemini-model gemini-3-pro-preview` (note trailing space); use empty string for codex
+**If Local Mode (or External Failed):**
 
-**Role Prompts**:
-
-| Phase | Codex | Gemini |
-|-------|-------|--------|
-| Analysis | `~/.codebuddy/.ccg/prompts/codex/analyzer.md` | `~/.codebuddy/.ccg/prompts/gemini/analyzer.md` |
-| Planning | `~/.codebuddy/.ccg/prompts/codex/architect.md` | `~/.codebuddy/.ccg/prompts/gemini/architect.md` |
-
-**Session Reuse**: Each call returns `SESSION_ID: xxx` (typically output by wrapper), **MUST save** for subsequent `/ccg:execute` use.
-
-**Wait for Background Tasks** (max timeout 600000ms = 10 minutes):
-
+Launch the **planner** agent directly:
 ```
-TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
+The planner agent will create a detailed implementation plan based on:
+- Gathered context from Phase 1
+- User requirements
+- Project structure and patterns
 ```
 
-**IMPORTANT**:
-- Must specify `timeout: 600000`, otherwise default 30 seconds will cause premature timeout
-- If still incomplete after 10 minutes, continue polling with `TaskOutput`, **NEVER kill the process**
-- If waiting is skipped due to timeout, **MUST call `AskUserQuestion` to ask user whether to continue waiting or kill task**
+### Phase 3: Plan Output
+
+- Write plan to `.codebuddy/plan/current.md`
+- Present summary to user
+- Indicate which mode was used (external/local)
 
 ---
 
-## Execution Workflow
+## Example Usage
 
-**Planning Task**: $ARGUMENTS
-
-### Phase 1: Full Context Retrieval
-
-`[Mode: Research]`
-
-#### 1.1 Prompt Enhancement (MUST execute first)
-
-**MUST call `mcp__ace-tool__enhance_prompt` tool**:
-
-```
-mcp__ace-tool__enhance_prompt({
-  prompt: "$ARGUMENTS",
-  conversation_history: "<last 5-10 conversation turns>",
-  project_root_path: "$PWD"
-})
-```
-
-Wait for enhanced prompt, **replace original $ARGUMENTS with enhanced result** for all subsequent phases.
-
-#### 1.2 Context Retrieval
-
-**Call `mcp__ace-tool__search_context` tool**:
-
-```
-mcp__ace-tool__search_context({
-  query: "<semantic query based on enhanced requirement>",
-  project_root_path: "$PWD"
-})
-```
-
-- Build semantic query using natural language (Where/What/How)
-- **NEVER answer based on assumptions**
-- If MCP unavailable: fallback to Glob + Grep for file discovery and key symbol location
-
-#### 1.3 Completeness Check
-
-- Must obtain **complete definitions and signatures** for relevant classes, functions, variables
-- If context insufficient, trigger **recursive retrieval**
-- Prioritize output: entry file + line number + key symbol name; add minimal code snippets only when necessary to resolve ambiguity
-
-#### 1.4 Requirement Alignment
-
-- If requirements still have ambiguity, **MUST** output guiding questions for user
-- Until requirement boundaries are clear (no omissions, no redundancy)
-
-### Phase 2: Multi-Model Collaborative Analysis
-
-`[Mode: Analysis]`
-
-#### 2.1 Distribute Inputs
-
-**Parallel call** Codex and Gemini (`run_in_background: true`):
-
-Distribute **original requirement** (without preset opinions) to both models:
-
-1. **Codex Backend Analysis**:
-   - ROLE_FILE: `~/.codebuddy/.ccg/prompts/codex/analyzer.md`
-   - Focus: Technical feasibility, architecture impact, performance considerations, potential risks
-   - OUTPUT: Multi-perspective solutions + pros/cons analysis
-
-2. **Gemini Frontend Analysis**:
-   - ROLE_FILE: `~/.codebuddy/.ccg/prompts/gemini/analyzer.md`
-   - Focus: UI/UX impact, user experience, visual design
-   - OUTPUT: Multi-perspective solutions + pros/cons analysis
-
-Wait for both models' complete results with `TaskOutput`. **Save SESSION_ID** (`CODEX_SESSION` and `GEMINI_SESSION`).
-
-#### 2.2 Cross-Validation
-
-Integrate perspectives and iterate for optimization:
-
-1. **Identify consensus** (strong signal)
-2. **Identify divergence** (needs weighing)
-3. **Complementary strengths**: Backend logic follows Codex, Frontend design follows Gemini
-4. **Logical reasoning**: Eliminate logical gaps in solutions
-
-#### 2.3 (Optional but Recommended) Dual-Model Plan Draft
-
-To reduce risk of omissions in Claude's synthesized plan, can parallel have both models output "plan drafts" (still **NOT allowed** to modify files):
-
-1. **Codex Plan Draft** (Backend authority):
-   - ROLE_FILE: `~/.codebuddy/.ccg/prompts/codex/architect.md`
-   - OUTPUT: Step-by-step plan + pseudo-code (focus: data flow/edge cases/error handling/test strategy)
-
-2. **Gemini Plan Draft** (Frontend authority):
-   - ROLE_FILE: `~/.codebuddy/.ccg/prompts/gemini/architect.md`
-   - OUTPUT: Step-by-step plan + pseudo-code (focus: information architecture/interaction/accessibility/visual consistency)
-
-Wait for both models' complete results with `TaskOutput`, record key differences in their suggestions.
-
-#### 2.4 Generate Implementation Plan (Claude Final Version)
-
-Synthesize both analyses, generate **Step-by-step Implementation Plan**:
-
-```markdown
-## Implementation Plan: <Task Name>
-
-### Task Type
-- [ ] Frontend (→ Gemini)
-- [ ] Backend (→ Codex)
-- [ ] Fullstack (→ Parallel)
-
-### Technical Solution
-<Optimal solution synthesized from Codex + Gemini analysis>
-
-### Implementation Steps
-1. <Step 1> - Expected deliverable
-2. <Step 2> - Expected deliverable
-...
-
-### Key Files
-| File | Operation | Description |
-|------|-----------|-------------|
-| path/to/file.ts:L10-L50 | Modify | Description |
-
-### Risks and Mitigation
-| Risk | Mitigation |
-|------|------------|
-
-### SESSION_ID (for /ccg:execute use)
-- CODEX_SESSION: <session_id>
-- GEMINI_SESSION: <session_id>
-```
-
-### Phase 2 End: Plan Delivery (Not Execution)
-
-**`/ccg:plan` responsibilities end here, MUST execute the following actions**:
-
-1. Present complete implementation plan to user (including pseudo-code)
-2. Save plan to `.codebuddy/plan/<feature-name>.md` (extract feature name from requirement, e.g., `user-auth`, `payment-module`)
-3. Output prompt in **bold text** (MUST use actual saved file path):
-
-   ---
-   **Plan generated and saved to `.codebuddy/plan/actual-feature-name.md`**
-
-   **Please review the plan above. You can:**
-   - **Modify plan**: Tell me what needs adjustment, I'll update the plan
-   - **Execute plan**: Copy the following command to a new session
-
-   ```
-   /ccg:execute .codebuddy/plan/actual-feature-name.md
-   ```
-   ---
-
-   **NOTE**: The `actual-feature-name.md` above MUST be replaced with the actual saved filename!
-
-4. **Immediately terminate current response** (Stop here. No more tool calls.)
-
-**ABSOLUTELY FORBIDDEN**:
-- Ask user "Y/N" then auto-execute (execution is `/ccg:execute`'s responsibility)
-- Any write operations to production code
-- Automatically call `/ccg:execute` or any implementation actions
-- Continue triggering model calls when user hasn't explicitly requested modifications
-
----
-
-## Plan Saving
-
-After planning completes, save plan to:
-
-- **First planning**: `.codebuddy/plan/<feature-name>.md`
-- **Iteration versions**: `.codebuddy/plan/<feature-name>-v2.md`, `.codebuddy/plan/<feature-name>-v3.md`...
-
-Plan file write should complete before presenting plan to user.
-
----
-
-## Plan Modification Flow
-
-If user requests plan modifications:
-
-1. Adjust plan content based on user feedback
-2. Update `.codebuddy/plan/<feature-name>.md` file
-3. Re-present modified plan
-4. Prompt user to review or execute again
-
----
-
-## Next Steps
-
-After user approves, **manually** execute:
+### Usage 1: Local Mode (Default)
 
 ```bash
-/ccg:execute .codebuddy/plan/<feature-name>.md
+# No configuration needed, uses planner agent
+/multi-plan Create a REST API for user management
+```
+
+### Usage 2: External Mode (After Configuration)
+
+1. Edit `~/.codebuddy/multi-config.json`:
+```json
+{
+  "mode": "auto",
+  "external": {
+    "enabled": true,
+    "codex": {
+      "api_key": "sk-...",
+      "model": "gpt-4"
+    },
+    "wrapper_path": "~/.codebuddy/bin/codeagent-wrapper"
+  }
+}
+```
+
+2. Use multi-plan:
+```bash
+/multi-plan Create a REST API for user management
+```
+
+### Usage 3: Force Local Mode
+
+```json
+{
+  "mode": "local"
+}
 ```
 
 ---
 
-## Key Rules
+## Troubleshooting
 
-1. **Plan only, no implementation** – This command does not execute any code changes
-2. **No Y/N prompts** – Only present plan, let user decide next steps
-3. **Trust Rules** – Backend follows Codex, Frontend follows Gemini
-4. External models have **zero filesystem write access**
-5. **SESSION_ID Handoff** – Plan must include `CODEX_SESSION` / `GEMINI_SESSION` at end (for `/ccg:execute resume <SESSION_ID>` use)
+| Issue | Solution |
+|-------|----------|
+| External not working | Check `multi-config.json` and wrapper script |
+| Wrapper missing | Use local mode or provide wrapper script |
+| API key invalid | Check configuration or fall back to local |
+| Fallback not working | Ensure `fallback.use_local_agents: true` |

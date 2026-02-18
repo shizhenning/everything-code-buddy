@@ -1,158 +1,99 @@
-# Frontend - Frontend-Focused Development
+# Frontend - Hybrid Frontend Development
 
-Frontend-focused workflow (Research → Ideation → Plan → Execute → Optimize → Review), Gemini-led.
+Multi-mode frontend development: Gemini (if available) or frontend-patterns skill.
 
-## Usage
+$ARGUMENTS
+
+---
+
+## Core Protocols
+
+- **Language Protocol**: Use English when interacting with tools/models
+- **Hybrid Mode**: Auto-detect available capabilities and use optimal approach
+- **Fallback Strategy**: External unavailable → frontend-patterns skill
+- **Code Sovereignty**: All production code modifications by CodeBuddy only
+
+---
+
+## Configuration Check
 
 ```bash
-/frontend <UI task description>
+node scripts/multi-mode-selector.js
 ```
-
-## Context
-
-- Frontend task: $ARGUMENTS
-- Gemini-led, Codex for auxiliary reference
-- Applicable: Component design, responsive layout, UI animations, style optimization
-
-## Your Role
-
-You are the **Frontend Orchestrator**, coordinating multi-model collaboration for UI/UX tasks (Research → Ideation → Plan → Execute → Optimize → Review).
-
-**Collaborative Models**:
-- **Gemini** – Frontend UI/UX (**Frontend authority, trustworthy**)
-- **Codex** – Backend perspective (**Frontend opinions for reference only**)
-- **Claude (self)** – Orchestration, planning, execution, delivery
 
 ---
 
-## Multi-Model Call Specification
+## Workflow
 
-**Call Syntax**:
+### Phase 1: Context Retrieval
+
+Use appropriate tools to gather context:
+- `search_content` - Find UI patterns and components
+- `read_file` - Understand existing styles and design system
+- `list_files` - Explore frontend structure
+
+### Phase 2: Design Planning
+
+**If External Mode (Gemini) Available:**
 
 ```
-# New session call
 Bash({
-  command: "~/.codebuddy/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--backend gemini --gemini-model gemini-3-pro-preview - \"$PWD\" <<'EOF'
-ROLE_FILE: <role prompt path>
+  command: "~/.codebuddy/bin/codeagent-wrapper --backend gemini --gemini-model gemini-3-pro-preview \"$PWD\" <<'EOF'
+ROLE_FILE: ~/.codebuddy/.ccg/prompts/gemini/architect.md
 <TASK>
-Requirement: <enhanced requirement (or $ARGUMENTS if not enhanced)>
-Context: <project context and analysis from previous phases>
+Requirement: $ARGUMENTS
+Context: <gathered context>
 </TASK>
-OUTPUT: Expected output format
+OUTPUT: Component structure, UI flow, styling approach
 EOF",
-  run_in_background: false,
-  timeout: 3600000,
-  description: "Brief description"
-})
-
-# Resume session call
-Bash({
-  command: "~/.codebuddy/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--backend gemini --gemini-model gemini-3-pro-preview resume <SESSION_ID> - \"$PWD\" <<'EOF'
-ROLE_FILE: <role prompt path>
-<TASK>
-Requirement: <enhanced requirement (or $ARGUMENTS if not enhanced)>
-Context: <project context and analysis from previous phases>
-</TASK>
-OUTPUT: Expected output format
-EOF",
-  run_in_background: false,
-  timeout: 3600000,
-  description: "Brief description"
+  run_in_background: true
 })
 ```
 
-**Role Prompts**:
+**If Local Mode:**
 
-| Phase | Gemini |
-|-------|--------|
-| Analysis | `~/.codebuddy/.ccg/prompts/gemini/analyzer.md` |
-| Planning | `~/.codebuddy/.ccg/prompts/gemini/architect.md` |
-| Review | `~/.codebuddy/.ccg/prompts/gemini/reviewer.md` |
+Load **frontend-patterns** skill:
+```
+Use frontend-patterns skill for:
+- Component design guidance
+- Responsive layout patterns
+- UI/UX best practices
+```
 
-**Session Reuse**: Each call returns `SESSION_ID: xxx`, use `resume xxx` for subsequent phases. Save `GEMINI_SESSION` in Phase 2, use `resume` in Phases 3 and 5.
+### Phase 3: Implementation
 
----
+- Use CodeBuddy tools for implementation
+- Apply selected design approach
+- Ensure responsiveness and accessibility
 
-## Communication Guidelines
+### Phase 4: Review
 
-1. Start responses with mode label `[Mode: X]`, initial is `[Mode: Research]`
-2. Follow strict sequence: `Research → Ideation → Plan → Execute → Optimize → Review`
-3. Use `AskUserQuestion` tool for user interaction when needed (e.g., confirmation/selection/approval)
+**If External Mode:**
+```
+Bash({
+  command: "~/.codebuddy/bin/codeagent-wrapper --backend gemini --gemini-model gemini-3-pro-preview \"$PWD\" <<'EOF'
+ROLE_FILE: ~/.codebuddy/.ccg/prompts/gemini/reviewer.md
+<TASK>
+Requirement: Review the following frontend code changes
+Context: <git diff or code content>
+</TASK>
+OUTPUT: Accessibility, responsiveness, performance, design consistency issues
+EOF",
+  run_in_background: true
+})
+```
 
----
-
-## Core Workflow
-
-### Phase 0: Prompt Enhancement (Optional)
-
-`[Mode: Prepare]` - If ace-tool MCP available, call `mcp__ace-tool__enhance_prompt`, **replace original $ARGUMENTS with enhanced result for subsequent Gemini calls**
-
-### Phase 1: Research
-
-`[Mode: Research]` - Understand requirements and gather context
-
-1. **Code Retrieval** (if ace-tool MCP available): Call `mcp__ace-tool__search_context` to retrieve existing components, styles, design system
-2. Requirement completeness score (0-10): >=7 continue, <7 stop and supplement
-
-### Phase 2: Ideation
-
-`[Mode: Ideation]` - Gemini-led analysis
-
-**MUST call Gemini** (follow call specification above):
-- ROLE_FILE: `~/.codebuddy/.ccg/prompts/gemini/analyzer.md`
-- Requirement: Enhanced requirement (or $ARGUMENTS if not enhanced)
-- Context: Project context from Phase 1
-- OUTPUT: UI feasibility analysis, recommended solutions (at least 2), UX evaluation
-
-**Save SESSION_ID** (`GEMINI_SESSION`) for subsequent phase reuse.
-
-Output solutions (at least 2), wait for user selection.
-
-### Phase 3: Planning
-
-`[Mode: Plan]` - Gemini-led planning
-
-**MUST call Gemini** (use `resume <GEMINI_SESSION>` to reuse session):
-- ROLE_FILE: `~/.codebuddy/.ccg/prompts/gemini/architect.md`
-- Requirement: User's selected solution
-- Context: Analysis results from Phase 2
-- OUTPUT: Component structure, UI flow, styling approach
-
-Claude synthesizes plan, save to `.codebuddy/plan/task-name.md` after user approval.
-
-### Phase 4: Implementation
-
-`[Mode: Execute]` - Code development
-
-- Strictly follow approved plan
-- Follow existing project design system and code standards
-- Ensure responsiveness, accessibility
-
-### Phase 5: Optimization
-
-`[Mode: Optimize]` - Gemini-led review
-
-**MUST call Gemini** (follow call specification above):
-- ROLE_FILE: `~/.codebuddy/.ccg/prompts/gemini/reviewer.md`
-- Requirement: Review the following frontend code changes
-- Context: git diff or code content
-- OUTPUT: Accessibility, responsiveness, performance, design consistency issues list
-
-Integrate review feedback, execute optimization after user confirmation.
-
-### Phase 6: Quality Review
-
-`[Mode: Review]` - Final evaluation
-
-- Check completion against plan
-- Verify responsiveness and accessibility
-- Report issues and recommendations
+**If Local Mode:**
+- Use code-reviewer for quality checks
+- Manual review for accessibility and responsiveness
 
 ---
 
-## Key Rules
+## Comparison
 
-1. **Gemini frontend opinions are trustworthy**
-2. **Codex frontend opinions for reference only**
-3. External models have **zero filesystem write access**
-4. Claude handles all code writes and file operations
+| Aspect | External Mode | Local Mode |
+|--------|--------------|-----------|
+| **Design Quality** | Gemini's UI expertise | frontend-patterns skill |
+| **Accessibility** | Built-in review | Manual review |
+| **Speed** | Faster analysis | Skill-guided implementation |
+| **Cost** | API costs | Free |

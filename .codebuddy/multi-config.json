@@ -1,0 +1,26 @@
+{
+  "version": "1.0",
+  "mode": "local",
+  "external": {
+    "enabled": false,
+    "codex": {
+      "api_key": "",
+      "model": "gpt-4",
+      "base_url": "https://api.openai.com/v1"
+    },
+    "gemini": {
+      "api_key": "",
+      "model": "gemini-3-pro-preview",
+      "base_url": "https://generativelanguage.googleapis.com/v1"
+    },
+    "wrapper_path": "~/.codebuddy/bin/codeagent-wrapper"
+  },
+  "fallback": {
+    "use_local_agents": true,
+    "prefer_internal_patterns": true
+  },
+  "prompts": {
+    "codex_dir": "~/.codebuddy/.ccg/prompts/codex",
+    "gemini_dir": "~/.codebuddy/.ccg/prompts/gemini"
+  }
+}
