@@ -1,6 +1,6 @@
-# User-Level CLAUDE.md Example
+# User-Level CODEBUDDY.md Example
 
-This is an example user-level CLAUDE.md file. Place at `~/.claude/CLAUDE.md`.
+This is an example user-level CODEBUDDY.md file. Place at `~/.codebuddy/CODEBUDDY.md`.
 
 User-level configs apply globally across all projects. Use for:
 - Personal coding preferences
@@ -24,7 +24,7 @@ You are Claude Code. I use specialized agents and skills for complex tasks.
 
 ## Modular Rules
 
-Detailed guidelines are in `~/.claude/rules/`:
+Detailed guidelines are in `~/.codebuddy/rules/`:
 
 | Rule File | Contents |
 |-----------|----------|
@@ -41,7 +41,7 @@ Detailed guidelines are in `~/.claude/rules/`:
 
 ## Available Agents
 
-Located in `~/.claude/agents/`:
+Located in `~/.codebuddy/agents/`:
 
 | Agent | Purpose |
 |-------|---------|

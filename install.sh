@@ -11,7 +11,7 @@
 #   ./install.sh --target cursor typescript python golang
 #
 # Targets:
-#   claude  (default) — Install rules to ~/.claude/rules/
+#   codebuddy  (default) — Install rules to ~/.codebuddy/rules/
 #   cursor  — Install rules, agents, skills, commands, and MCP to ./.cursor/
 #
 # This script copies rules into the target directory keeping the common/ and
@@ -54,7 +54,7 @@ if [[ $# -eq 0 ]]; then
     echo "Usage: $0 [--target <claude|cursor>] <language> [<language> ...]"
     echo ""
     echo "Targets:"
-    echo "  claude  (default) — Install rules to ~/.claude/rules/"
+    echo "  codebuddy  (default) — Install rules to ~/.codebuddy/rules/"
     echo "  cursor  — Install rules, agents, skills, commands, and MCP to ./.cursor/"
     echo ""
     echo "Available languages:"
@@ -66,9 +66,9 @@ if [[ $# -eq 0 ]]; then
     exit 1
 fi
 
-# --- Claude target (existing behavior) ---
-if [[ "$TARGET" == "claude" ]]; then
-    DEST_DIR="${CLAUDE_RULES_DIR:-$HOME/.claude/rules}"
+# --- CodeBuddy target (existing behavior) ---
+if [[ "$TARGET" == "codebuddy" ]]; then
+    DEST_DIR="${CODEBUDDY_RULES_DIR:-$HOME/.codebuddy/rules}"
 
     # Warn if destination already exists (user may have local customizations)
     if [[ -d "$DEST_DIR" ]] && [[ "$(ls -A "$DEST_DIR" 2>/dev/null)" ]]; then

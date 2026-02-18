@@ -7,7 +7,7 @@ run_mode: background
 
 # Observer Agent
 
-A background agent that analyzes observations from Claude Code sessions to detect patterns and create instincts.
+A background agent that analyzes observations from CodeBuddy sessions to detect patterns and create instincts.
 
 ## When to Run
 
@@ -32,7 +32,7 @@ Reads observations from `~/.codebuddy/homunculus/observations.jsonl`:
 Look for these patterns in observations:
 
 ### 1. User Corrections
-When a user's follow-up message corrects Claude's previous action:
+When a user's follow-up message corrects CodeBuddy's previous action:
 - "No, use X instead of Y"
 - "Actually, I meant..."
 - Immediate undo/redo patterns

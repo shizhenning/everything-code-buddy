@@ -6,11 +6,12 @@ version: 2.0.0
 
 # Continuous Learning v2 - Instinct-Based Architecture
 
-An advanced learning system that turns your Claude Code sessions into reusable knowledge through atomic "instincts" - small learned behaviors with confidence scoring.
+An advanced learning system that turns your CodeBuddy sessions into reusable knowledge through atomic "instincts" - small learned behaviors with confidence scoring.
 
 ## When to Activate
 
-- Setting up automatic learning from Claude Code sessions
+
+- Setting up automatic learning from CodeBuddy sessions
 - Configuring instinct-based behavior extraction via hooks
 - Tuning confidence thresholds for learned behaviors
 - Reviewing, exporting, or importing instinct libraries
@@ -260,7 +261,7 @@ Confidence evolves over time:
 
 ## Why Hooks vs Skills for Observation?
 
-> "v1 relied on skills to observe. Skills are probabilistic—they fire ~50-80% of the time based on Claude's judgment."
+> "v1 relied on skills to observe. Skills are probabilistic—they fire ~50-80% of the time based on CodeBuddy's judgment."
 
 Hooks fire **100% of the time**, deterministically. This means:
 - Every tool call is observed
@@ -289,4 +290,4 @@ v2 is fully compatible with v1:
 
 ---
 
-*Instinct-based learning: teaching Claude your patterns, one observation at a time.*
+*Instinct-based learning: teaching CodeBuddy your patterns, one observation at a time.*
