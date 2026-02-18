@@ -1,4 +1,4 @@
-# ECC 组件 CodeBuddy 兼容性矩阵
+；# ECC 组件 CodeBuddy 兼容性矩阵
 
 > Everything Claude Code 各组件在 CodeBuddy 中的兼容性说明
 
@@ -238,6 +238,28 @@ cp -r .codebuddy/rules/typescript/* ~/.codebuddy/rules/
 | `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `CODEBUDDY_AUTOCOMPACT_PCT_OVERRIDE` | 自动压缩比例 |
 | `CLAUDE_PACKAGE_MANAGER` | `CODEBUDDY_PACKAGE_MANAGER` | 包管理器 |
 | `CLAUDE_*` | `CODEBUDDY_*` | 其他配置 |
+
+**CodeBuddy 路径变量规范**:
+
+| 环境变量 | 用途 | 示例路径 | 使用场景 |
+|----------|------|---------|---------|
+| `CODEBUDDY_PLUGIN_ROOT` | **CodeBuddy 安装根目录** | `C:\Users\username\.codebuddy` | 插件级配置、全局 Hooks、工具脚本 |
+| `CODEBUDDY_PROJECT_DIR` | **项目根目录** | `D:\projects\myapp` | 项目级配置、项目数据、相对路径 |
+| `CODEBUDDY_HOME` | **用户级配置目录** | `~/.codebuddy` | 用户全局配置、跨项目数据 |
+
+**平台路径差异**:
+
+| 平台 | 用户目录环境变量 | 用户目录路径示例 | ~ 快捷方式 |
+|------|-----------------|-----------------|-----------|
+| Windows | `%USERPROFILE%` | `C:\Users\username` | ✅ 支持 (PowerShell) |
+| Linux | `$HOME` | `/home/username` | ✅ 支持 |
+| macOS | `$HOME` | `/Users/username` | ✅ 支持 |
+
+**使用规则**:
+- ✅ **插件路径**: `${CODEBUDDY_PLUGIN_ROOT}/hooks/xxx.js`
+- ✅ **项目数据**: `${CODEBUDDY_PROJECT_DIR}/.codebuddy/homunculus`
+- ✅ **用户配置**: `~/.codebuddy` 或 `${CODEBUDDY_HOME}`
+- ❌ **错误用法**: `${CODEBUDDY_PROJECT_DIR}/.codebuddy/hooks`（应使用 PLUGIN_ROOT）
 
 **更新方法**:
 ```bash

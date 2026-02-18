@@ -59,16 +59,17 @@ Claude Code                    CodeBuddy
 │   ├── rules/               │   ├── rules/
 │   ├── settings.json         │   ├── settings.json
 │   └── session.jsonl         │   └── session.jsonl
-└── .claude-plugin/          └── mcp-configs/
-    ├── plugin.json           (MCP 配置在 settings.json)
-    └── marketplace.json
+└── .claude-plugin/          └── .codebuddy-plugin/
+    ├── plugin.json           │   ├── plugin.json
+    └── marketplace.json      │   └── marketplace.json
 ```
 
 ### 配置文件差异
 
 | 配置项 | Claude Code | CodeBuddy |
 |--------|-------------|-------------|
-| **插件配置** | `.claude-plugin/plugin.json` | `.codebuddy/plugin.json` |
+| **插件配置** | `.claude-plugin/plugin.json` | `.codebuddy-plugin/plugin.json` |
+| **市场配置** | `.claude-plugin/marketplace.json` | `.codebuddy-plugin/marketplace.json` |
 | **环境变量** | `CLAUDE_*` | `CODEBUDDY_*` |
 | **Hook 路径** | `${CLAUDE_PLUGIN_ROOT}` | `${CODEBUDDY_PLUGIN_ROOT}` |
 | **MCP 配置** | `.claude.json` | `.codebuddy/settings.json` (mcpServers 字段) |

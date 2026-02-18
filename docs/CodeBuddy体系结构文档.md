@@ -2303,11 +2303,25 @@ user-invocable: false  # 不出现在 / 菜单
 
 | 变量名 | 描述 | 示例 |
 |--------|------|------|
-| `CODEBUDDY_PROJECT_DIR` | 项目根目录 | `/path/to/project` |
+| `CODEBUDDY_PLUGIN_ROOT` | **插件根目录** | `C:\Users\username\.codebuddy` |
+| `CODEBUDDY_PROJECT_DIR` | **项目根目录** | `D:\projects\myapp` |
+| `CODEBUDDY_HOME` | **用户配置目录** | `~/.codebuddy` |
 | `CODEBUDDY_MODEL` | 默认模型 | `gemini-3.0-flash` |
 | `CODEBUDDY_API_KEY` | API 密钥 | `sk-...` |
 | `CODEBUDDY_MAX_TOKENS` | 最大 tokens | `8192` |
 | `GITHUB_TOKEN` | GitHub Token | `ghp_...` |
+
+**平台路径变量**:
+| 平台 | 用户目录环境变量 | 用户目录路径示例 |
+|------|-----------------|-----------------|
+| Windows | `%USERPROFILE%` | `C:\Users\username` |
+| Linux/macOS | `$HOME` | `/home/username` 或 `/Users/username` |
+
+**快捷方式支持**:
+- ✅ `~` 表示用户主目录 (跨平台)
+- ✅ `~/.codebuddy` 表示用户全局配置目录
+- ✅ Windows PowerShell 支持 `~` 快捷方式
+- ✅ Linux/macOS Bash 支持 `~` 快捷方式
 
 ### C. CLI 命令参考
 
@@ -4327,6 +4341,135 @@ Hooks (钩子) 是在特定事件发生时自动执行的脚本,用于自动化�
 | `SessionStart` | 会话启动时 | 初始化环境 | session_info |
 | `SessionEnd` | 会话结束时 | 清理、生成报告 | session_summary |
 
+### Claude Code vs CodeBuddy Hooks 完整对比
+
+#### 一、Hook 事件类型对比
+
+| Claude Code | CodeBuddy | 兼容性 | 说明 |
+|-------------|-----------|--------|------|
+| ✅ **PreToolUse** | ✅ **PreToolUse** | 🟢 完全相同 | 工具调用前触发 |
+| ✅ **PostToolUse** | ✅ **PostToolUse** | 🟢 完全相同 | 工具调用后触发 |
+| ✅ **PostToolUseFailure** | ❌ 不支持 | 🔴 不支持 | 工具调用失败时触发 |
+| ✅ **PermissionRequest** | ❌ 不支持 | 🔴 不支持 | 权限请求时触发 |
+| ✅ **Stop** | ✅ **Stop** | 🟢 完全相同 | 响应完成时触发 |
+| ✅ **SubagentStart** | ❌ 不支持 | 🔴 不支持 | 子代理启动时触发 |
+| ✅ **SubagentStop** | ✅ **SubagentStop** | 🟡 部分支持 | 子代理完成时触发 |
+| ✅ **SessionStart** | ✅ **SessionStart** | 🟢 完全相同 | 会话启动时触发 |
+| ✅ **SessionEnd** | ✅ **SessionEnd** | 🟢 完全相同 | 会话结束时触发 |
+| ✅ **UserPromptSubmit** | ✅ **UserPromptSubmit** | 🟢 完全相同 | 用户提交输入时触发 |
+| ✅ **PreCompact** | ✅ **PreCompact** | 🟡 环境变量调整 | 上下文压缩前触发 |
+| ✅ **Notification** | ✅ **Notification** | 🔵 CodeBuddy 独有 | 发送通知时触发 |
+| ✅ **TeammateIdle** | ❌ 不支持 | 🔴 不支持 | 团队成员空闲时触发 |
+| ✅ **TaskCompleted** | ❌ 不支持 | 🔴 不支持 | 任务完成时触发 |
+
+**统计对比：**
+
+| 平台 | 支持的事件数 | 独有事件 |
+|-----|------------|---------|
+| **Claude Code** | 14 | PostToolUseFailure, PermissionRequest, SubagentStart, TeammateIdle, TaskCompleted |
+| **CodeBuddy** | 9 | Notification |
+| **共同支持** | 9 | PreToolUse, PostToolUse, Stop, SessionStart, SessionEnd, UserPromptSubmit, PreCompact, SubagentStop |
+
+#### 二、Hook 配置兼容性
+
+| Hook 类型 | 兼容性 | 需要调整 |
+|-----------|--------|---------|
+| PreToolUse - Bash | 🟢 兼容 | 环境变量 |
+| PostToolUse - Edit | 🟢 兼容 | 路径引用 |
+| Stop - * | 🟢 兼容 | 无需调整 |
+| SessionStart - * | 🟢 兼容 | 无需调整 |
+| SessionEnd - * | 🟢 兼容 | 无需调整 |
+| PreCompact | 🟢 兼容 | 环境变量 |
+| async hooks | 🟢 兼容 | 无需调整 |
+
+#### 三、Hook 类型（执行方式）对比
+
+| Hook 类型 | Claude Code | CodeBuddy |
+|-----------|-------------|-----------|
+| **Command** | ✅ 支持 | ✅ 支持 |
+| **Prompt** | ✅ 支持 | ❌ 不支持 |
+| **Agent** | ✅ 支持 | ❌ 不支持 |
+
+#### 四、环境变量映射
+
+| Claude Code | CodeBuddy | 用途 |
+|-------------|-----------|------|
+| `CLAUDE_PLUGIN_ROOT` | `CODEBUDDY_PLUGIN_ROOT` | 插件根目录 |
+| `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `CODEBUDDY_AUTOCOMPACT_PCT_OVERRIDE` | 自动压缩比例 |
+| `CLAUDE_PACKAGE_MANAGER` | `CODEBUDDY_PACKAGE_MANAGER` | 包管理器 |
+| `CLAUDE_*` | `CODEBUDDY_*` | 其他配置 |
+
+**CodeBuddy 新增环境变量**:
+| 变量名 | 用途 | 示例 |
+|--------|------|------|
+| `CODEBUDDY_HOME` | 用户配置目录 | `~/.codebuddy` |
+
+**平台特定环境变量**:
+| 平台 | 用户目录变量 | 示例 |
+|------|-------------|------|
+| Windows | `%USERPROFILE%` | `C:\Users\username` |
+| Linux/macOS | `$HOME` | `/home/username` |
+
+**批量迁移命令：**
+```bash
+# 从 Claude Code 迁移到 CodeBuddy
+find .codebuddy/scripts -name "*.js" -exec sed -i 's/CLAUDE_/CODEBUDDY_/g' {} \;
+
+# 从 CodeBuddy 迁移到 Claude Code
+find .claude/scripts -name "*.js" -exec sed -i 's/CODEBUDDY_/CLAUDE_/g' {} \;
+```
+
+#### 五、决策控制对比
+
+**Claude Code 支持的决策模式：**
+
+| 事件 | 决策模式 | 关键字段 |
+|-----|---------|---------|
+| UserPromptSubmit, PostToolUse, PostToolUseFailure, Stop, SubagentStop | Top-level | `decision: "block"`, `reason` |
+| TeammateIdle, TaskCompleted | Exit code only | `exit 2` blocks |
+| PreToolUse | hookSpecificOutput | `permissionDecision` (allow/deny/ask) |
+| PermissionRequest | hookSpecificOutput | `decision.behavior` (allow/deny) |
+
+**CodeBuddy 决策控制：**
+- **简化模式**：主要依赖 exit codes (0=允许, 2=阻止)
+- **JSON 输出**：支持基础 decision 字段
+- **重要限制**：
+  - ❌ **不支持** Prompt 类型的 hooks
+  - ❌ **不支持** Agent 类型的 hooks
+  - 仅支持 Command 类型的 hooks
+
+#### 六、Matcher 支持对比
+
+| 事件 | Claude Code Matcher | CodeBuddy Matcher |
+|-----|---------------------|-------------------|
+| PreToolUse | 按工具名称 (Bash, Edit, Write, Read, Glob, Grep, Task, WebFetch, WebSearch, MCP) | 按工具名称 |
+| PostToolUse | 按工具名称 | 按工具名称 |
+| SessionStart | startup, resume, clear, compact | startup, resume, clear, compact |
+| SessionEnd | clear, logout, prompt_input_exit, bypass_permissions_disabled, other | clear, logout, other |
+| Notification | permission_prompt, idle_prompt, auth_success, elicitation_dialog | permission_prompt, idle_prompt |
+| Stop | ❌ 不支持 matcher | ❌ 不支持 matcher |
+| UserPromptSubmit | ❌ 不支持 matcher | ❌ 不支持 matcher |
+
+#### 七、配置文件位置
+
+| 平台 | 用户级 | 项目级 | 插件级 |
+|-----|--------|--------|--------|
+| Claude Code | `~/.claude/settings.json` | `.claude/settings.json` | `.claude-plugin/plugin.json` → `hooks/hooks.json` |
+| CodeBuddy | `~/.codebuddy/settings.json` | `.codebuddy/settings.json` | `.codebuddy-plugin/plugin.json` → `.codebuddy-plugin/marketplace.json` |
+
+#### 八、迁移建议
+
+**从 Claude Code 迁移到 CodeBuddy：**
+1. **事件类型**：移除 PostToolUseFailure, PermissionRequest, SubagentStart, TeammateIdle, TaskCompleted
+2. **Hook 类型**：将 prompt/agent hooks 转换为 command hooks
+3. **环境变量**：批量替换 `CLAUDE_` → `CODEBUDDY_`
+4. **决策控制**：简化 JSON 输出，优先使用 exit codes
+
+**从 CodeBuddy 迁移到 Claude Code：**
+1. **扩展支持**：可使用更多事件类型（如 TeammateIdle 用于质量门控）
+2. **高级 Hooks**：可使用 prompt/agent hooks 实现智能决策
+3. **环境变量**：批量替换 `CODEBUDDY_` → `CLAUDE_`
+
 ### 配置格式
 
 #### 基础配置
@@ -4425,9 +4568,26 @@ Hook 脚本可访问的环境变量:
 
 | 变量名 | 说明 | 示例值 |
 |--------|------|--------|
-| `CODEBUDDY_PROJECT_DIR` | 项目根目录 | `/path/to/project` |
+| `CODEBUDDY_PLUGIN_ROOT` | **插件根目录** | `C:\Users\username\.codebuddy` |
+| `CODEBUDDY_PROJECT_DIR` | **项目根目录** | `D:\projects\myapp` |
+| `CODEBUDDY_HOME` | **用户配置目录** | `~/.codebuddy` |
 | `FILE_PATH` | 文件路径 (PostToolUse) | `src/app.ts` |
 | `TOOL_NAME` | 工具名称 | `"Edit"` |
+
+**平台路径变量**:
+| 平台 | 用户目录环境变量 | 用户目录路径 | ~ 快捷方式支持 |
+|------|-----------------|-------------|---------------|
+| Windows | `%USERPROFILE%` | `C:\Users\username` | ✅ PowerShell 支持 |
+| Linux | `$HOME` | `/home/username` | ✅ Bash 支持 |
+| macOS | `$HOME` | `/Users/username` | ✅ Bash/Zsh 支持 |
+
+**路径变量使用规范**:
+
+| 规则 | 说明 | 示例 |
+|------|------|------|
+| ✅ **插件脚本** | 使用 `CODEBUDDY_PLUGIN_ROOT` | `${CODEBUDDY_PLUGIN_ROOT}/hooks/xxx.js` |
+| ✅ **项目数据** | 使用 `CODEBUDDY_PROJECT_DIR/.codebuddy` | `${CODEBUDDY_PROJECT_DIR}/.codebuddy/homunculus` |
+| ❌ **错误用法** | 不要混用变量 | `${CODEBUDDY_PROJECT_DIR}/.codebuddy/hooks` |
 
 ### 输入输出
 
