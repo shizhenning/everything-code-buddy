@@ -1,0 +1,38 @@
+{
+  "language": "简体中文",
+  "model": "claude-3-5-sonnet",
+  "permissions": {
+    "allow": [
+      "Bash(git:*)",
+      "Bash(npm:*)",
+      "Bash(node:*)",
+      "Bash(python:*)",
+      "Read",
+      "Edit",
+      "ReplaceInFile"
+    ],
+    "ask": [
+      "WebFetch",
+      "Bash(docker:*)",
+      "Bash(sudo:*)"
+    ],
+    "deny": [
+      "Bash(rm:*)",
+      "Bash(del:*)",
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./secrets/**)",
+      "Read(./**/.env)"
+    ]
+  },
+  "env": {
+    "NODE_ENV": "development",
+    "DEBUG": "codebuddy:*"
+  },
+  "cleanupPeriodDays": 30,
+  "includeCoAuthoredBy": false,
+  "autoCompactEnabled": true,
+  "enabledPlugins": {
+    "everything-codebuddy@local": true
+  }
+}

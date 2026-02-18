@@ -40,3 +40,10 @@ examples/sessions/*.tmp
 
 # Local drafts
 marketing/
+
+# CodeBuddy symlinks (linked to project directories)
+.codebuddy/agents/
+.codebuddy/commands/
+.codebuddy/skills/
+.codebuddy/rules/
+.codebuddy/scripts/

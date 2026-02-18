@@ -1,0 +1,41 @@
+{
+  "name": "everything-codebuddy",
+  "version": "1.0.0",
+  "description": "Complete collection of battle-tested CodeBuddy configs from an Anthropic hackathon winner - agents, skills, hooks, and rules evolved over 10+ months of intensive daily use",
+  "author": {
+    "name": "Affaan Mustafa",
+    "url": "https://x.com/affaanmustafa"
+  },
+  "homepage": "https://github.com/affaan-m/everything-claude-code",
+  "repository": "https://github.com/affaan-m/everything-claude-code",
+  "license": "MIT",
+  "keywords": [
+    "codebuddy",
+    "agents",
+    "skills",
+    "hooks",
+    "rules",
+    "tdd",
+    "code-review",
+    "security",
+    "workflow",
+    "automation",
+    "best-practices"
+  ],
+  "skills": ["../.codebuddy/skills/", "../.codebuddy/commands/"],
+  "agents": [
+    "../.codebuddy/agents/architect.md",
+    "../.codebuddy/agents/build-error-resolver.md",
+    "../.codebuddy/agents/code-reviewer.md",
+    "../.codebuddy/agents/database-reviewer.md",
+    "../.codebuddy/agents/doc-updater.md",
+    "../.codebuddy/agents/e2e-runner.md",
+    "../.codebuddy/agents/go-build-resolver.md",
+    "../.codebuddy/agents/go-reviewer.md",
+    "../.codebuddy/agents/planner.md",
+    "../.codebuddy/agents/python-reviewer.md",
+    "../.codebuddy/agents/refactor-cleaner.md",
+    "../.codebuddy/agents/security-reviewer.md",
+    "../.codebuddy/agents/tdd-guide.md"
+  ]
+}

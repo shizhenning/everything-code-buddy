@@ -1,0 +1,25 @@
+{
+  "name": "everything-codebuddy",
+  "version": "1.0.0",
+  "description": "Complete AI coding assistant with 13 agents, 50+ skills, and automated workflows",
+  "author": "ECC Contributors",
+  "license": "MIT",
+  "components": {
+    "agents": [
+      "./agents/"
+    ],
+    "commands": [
+      "./commands/"
+    ],
+    "skills": [
+      "./skills/"
+    ],
+    "hooks": "./hooks/hooks.json",
+    "instructions": [
+      "./instructions/common/",
+      "./instructions/typescript/",
+      "./instructions/python/",
+      "./instructions/golang/"
+    ]
+  }
+}
