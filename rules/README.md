@@ -47,12 +47,12 @@ rules/
 
 ```bash
 # Install common rules (required for all projects)
-cp -r rules/common ~/.claude/rules/common
+cp -r rules/common ~/.codebuddy/rules/common
 
 # Install language-specific rules based on your project's tech stack
-cp -r rules/typescript ~/.claude/rules/typescript
-cp -r rules/python ~/.claude/rules/python
-cp -r rules/golang ~/.claude/rules/golang
+cp -r rules/typescript ~/.codebuddy/rules/typescript
+cp -r rules/python ~/.codebuddy/rules/python
+cp -r rules/golang ~/.codebuddy/rules/golang
 
 # Attention ! ! ! Configure according to your actual project requirements; the configuration here is for reference only.
 ```

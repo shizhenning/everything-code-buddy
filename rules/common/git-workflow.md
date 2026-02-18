@@ -10,7 +10,7 @@
 
 Types: feat, fix, refactor, docs, test, chore, perf, ci
 
-Note: Attribution disabled globally via ~/.claude/settings.json.
+Note: Attribution disabled globally via ~/.codebuddy/settings.json.
 
 ## Pull Request Workflow
 
