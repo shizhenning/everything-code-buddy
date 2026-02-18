@@ -9,7 +9,7 @@ $ARGUMENTS
 ## Core Protocols
 
 - **Language Protocol**: Use **English** when interacting with tools/models, communicate with user in their language
-- **Mandatory Parallel**: Codex/Gemini calls MUST use `run_in_background: true` (including single model calls, to avoid blocking main thread)
+- **Hybrid Mode**: External models (Codex/Gemini)优先，不可用时使用 CodeBuddy native subagents
 - **Code Sovereignty**: External models have **zero filesystem write access**, all modifications by Claude
 - **Stop-Loss Mechanism**: Do not proceed to next phase until current phase output is validated
 - **Planning Only**: This command allows reading context and writing to `${CODEBUDDY_PROJECT_DIR}/.codebuddy/plan/*` plan files, but **NEVER modify production code**
@@ -69,53 +69,81 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 
 `[Mode: Research]`
 
-#### 1.1 Prompt Enhancement (MUST execute first)
+#### 1.1 Analyze Requirement
 
-**MUST call `mcp__ace-tool__enhance_prompt` tool**:
+Parse the input requirement ($ARGUMENTS) and identify:
+- Task type: Frontend, Backend, or Fullstack
+- Key modules/features involved
+- Technical domains (e.g., authentication, database, UI components)
 
-```
-mcp__ace-tool__enhance_prompt({
-  prompt: "$ARGUMENTS",
-  conversation_history: "<last 5-10 conversation turns>",
-  project_root_path: "$PWD"
-})
-```
+#### 1.2 Context Retrieval (Native Tools)
 
-Wait for enhanced prompt, **replace original $ARGUMENTS with enhanced result** for all subsequent phases.
+**Use CodeBuddy native tools** - Glob, Grep, and Read:
 
-#### 1.2 Context Retrieval
+1. **Discover project structure**:
+   ```
+   Glob({ pattern: "**/*.{js,ts,jsx,tsx,py,java,go,rs}" })
+   ```
+   - Identify main source directories
+   - Find configuration files (package.json, requirements.txt, go.mod, etc.)
 
-**Call `mcp__ace-tool__search_context` tool**:
+2. **Search relevant code patterns**:
+   ```
+   Grep({ pattern: "<keyword from requirement>", fileTypes: "<lang>" })
+   ```
+   - Search for related function names, class names, imports
+   - Find existing implementations
 
-```
-mcp__ace-tool__search_context({
-  query: "<semantic query based on enhanced requirement>",
-  project_root_path: "$PWD"
-})
-```
+3. **Read key files**:
+   ```
+   Read({ filePath: "<path/to/file>" })
+   ```
+   - Get complete definitions
+   - Understand existing patterns
 
-- Build semantic query using natural language (Where/What/How)
-- **NEVER answer based on assumptions**
-- If MCP unavailable: fallback to Glob + Grep for file discovery and key symbol location
+4. **Recursive retrieval** (if needed):
+   - Follow import/dependency chains
+   - Get function signatures and interfaces
+   - Understand data flow
+
+**IMPORTANT**:
+- Prioritize entry files (main, index, app)
+- Get function signatures and type definitions
+- Build understanding of existing patterns
+- Never assume - use tools to verify
 
 #### 1.3 Completeness Check
 
 - Must obtain **complete definitions and signatures** for relevant classes, functions, variables
-- If context insufficient, trigger **recursive retrieval**
-- Prioritize output: entry file + line number + key symbol name; add minimal code snippets only when necessary to resolve ambiguity
+- If context insufficient, continue with recursive retrieval
+- Prioritize: entry file + line number + key symbol; add snippets only when necessary
 
 #### 1.4 Requirement Alignment
 
-- If requirements still have ambiguity, **MUST** output guiding questions for user
-- Until requirement boundaries are clear (no omissions, no redundancy)
+- If requirements have ambiguity, output guiding questions for user
+- Ensure requirement boundaries are clear (no omissions, no redundancy)
 
 ### Phase 2: Multi-Model Collaborative Analysis
 
 `[Mode: Analysis]`
 
-#### 2.1 Distribute Inputs
+#### 2.1 Check External Model Availability
 
-**Parallel call** Codex and Gemini (`run_in_background: true`):
+**First, check if `codeagent-wrapper` exists**:
+
+```bash
+Bash({
+  command: "test -f \"${CODEBUDDY_PLUGIN_ROOT}/bin/codeagent-wrapper\" && echo \"AVAILABLE\" || echo \"NOT_AVAILABLE\"",
+  requires_approval: false
+})
+```
+
+- If output is "AVAILABLE" → Use External Models (Codex/Gemini)
+- If output is "NOT_AVAILABLE" → Use CodeBuddy Native Subagents
+
+#### 2.2A Distribute Inputs (External Models Mode)
+
+**If codeagent-wrapper is available**, parallel call Codex and Gemini (`run_in_background: true`):
 
 Distribute **original requirement** (without preset opinions) to both models:
 
@@ -131,6 +159,34 @@ Distribute **original requirement** (without preset opinions) to both models:
 
 Wait for both models' complete results with `TaskOutput`. **Save SESSION_ID** (`CODEX_SESSION` and `GEMINI_SESSION`).
 
+#### 2.2B Distribute Inputs (Native Subagents Mode)
+
+**If codeagent-wrapper is NOT available**, use CodeBuddy native subagents:
+
+Parallel call architect and planner agents:
+
+1. **Architecture Analysis**:
+   ```
+   Task({
+     subagent_name: "architect",
+     description: "Architecture analysis",
+     prompt: "Analyze the following requirement for architecture impact, technical feasibility, and performance considerations:\n\n$ARGUMENTS\n\nContext:\n<retrieved project context>"
+   })
+   ```
+   - Focus: Architecture design, technical decisions, risk assessment
+
+2. **Planning Analysis**:
+   ```
+   Task({
+     subagent_name: "planner",
+     description: "Implementation planning",
+     prompt: "Create detailed implementation plan for:\n\n$ARGUMENTS\n\nContext:\n<retrieved project context>"
+   })
+   ```
+   - Focus: Step-by-step breakdown, dependencies, testing strategy
+
+**Set SESSION_ID to "NATIVE_MODE"** for both models.
+
 #### 2.2 Cross-Validation
 
 Integrate perspectives and iterate for optimization:
@@ -140,7 +196,7 @@ Integrate perspectives and iterate for optimization:
 3. **Complementary strengths**: Backend logic follows Codex, Frontend design follows Gemini
 4. **Logical reasoning**: Eliminate logical gaps in solutions
 
-#### 2.3 (Optional but Recommended) Dual-Model Plan Draft
+#### 2.3A Dual-Model Plan Draft (External Models Mode)
 
 To reduce risk of omissions in Claude's synthesized plan, can parallel have both models output "plan drafts" (still **NOT allowed** to modify files):
 
@@ -154,6 +210,16 @@ To reduce risk of omissions in Claude's synthesized plan, can parallel have both
 
 Wait for both models' complete results with `TaskOutput`, record key differences in their suggestions.
 
+#### 2.3B Native Subagent Planning (Native Mode)
+
+**Already received plans from architect and planner agents in Phase 2.2B**.
+
+Review both plans and:
+- Identify consensus between architect and planner
+- Note any diverging recommendations
+- Prioritize architect's architectural decisions
+- Prioritize planner's implementation details
+
 #### 2.4 Generate Implementation Plan (Claude Final Version)
 
 Synthesize both analyses, generate **Step-by-step Implementation Plan**:
@@ -161,13 +227,18 @@ Synthesize both analyses, generate **Step-by-step Implementation Plan**:
 ```markdown
 ## Implementation Plan: <Task Name>
 
+### Execution Mode
+- **Mode**: <EXTERNAL_MODE | NATIVE_MODE>
+- **Backend Analysis**: <Codex | architect agent>
+- **Frontend Analysis**: <Gemini | planner agent>
+
 ### Task Type
-- [ ] Frontend (→ Gemini)
-- [ ] Backend (→ Codex)
-- [ ] Fullstack (→ Parallel)
+- [ ] Frontend (→ Gemini / planner)
+- [ ] Backend (→ Codex / architect)
+- [ ] Fullstack (→ Parallel / planner)
 
 ### Technical Solution
-<Optimal solution synthesized from Codex + Gemini analysis>
+<Optimal solution synthesized from analysis>
 
 ### Implementation Steps
 1. <Step 1> - Expected deliverable
@@ -183,9 +254,10 @@ Synthesize both analyses, generate **Step-by-step Implementation Plan**:
 | Risk | Mitigation |
 |------|------------|
 
-### SESSION_ID (for /ccg:execute use)
-- CODEX_SESSION: <session_id>
-- GEMINI_SESSION: <session_id>
+### SESSION_ID (for /multi-execute use)
+- MODE: <EXTERNAL_MODE | NATIVE_MODE>
+- CODEX_SESSION: <session_id | N/A>
+- GEMINI_SESSION: <session_id | N/A>
 ```
 
 ### Phase 2 End: Plan Delivery (Not Execution)
@@ -209,6 +281,9 @@ Synthesize both analyses, generate **Step-by-step Implementation Plan**:
    ---
 
    **NOTE**: The `actual-feature-name.md` above MUST be replaced with the actual saved filename!
+
+5. **If NATIVE_MODE was used**, remind user:
+   > **Note**: CodeBuddy native subagents were used for planning. External models (Codex/Gemini) were not available.
 
 4. **Immediately terminate current response** (Stop here. No more tool calls.)
 
@@ -256,6 +331,7 @@ After user approves, **manually** execute:
 
 1. **Plan only, no implementation** – This command does not execute any code changes
 2. **No Y/N prompts** – Only present plan, let user decide next steps
-3. **Trust Rules** – Backend follows Codex, Frontend follows Gemini
-4. External models have **zero filesystem write access**
-5. **SESSION_ID Handoff** – Plan must include `CODEX_SESSION` / `GEMINI_SESSION` at end (for `/ccg:execute resume <SESSION_ID>` use)
+3. **Hybrid Mode** – External models (Codex/Gemini)优先，fallback to native subagents
+4. **Trust Rules** – Backend follows Codex/architect, Frontend follows Gemini/planner
+5. **Zero Write Access** – External models and native subagents have no write access
+6. **SESSION_ID Handoff** – Plan must include MODE and SESSION_ID for `/multi-execute` use

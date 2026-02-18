@@ -9,10 +9,11 @@ $ARGUMENTS
 ## Core Protocols
 
 - **Language Protocol**: Use **English** when interacting with tools/models, communicate with user in their language
+- **Hybrid Mode**: External models (Codex/Gemini)优先，不可用时使用 CodeBuddy native agents
 - **Code Sovereignty**: External models have **zero filesystem write access**, all modifications by Claude
-- **Dirty Prototype Refactoring**: Treat Codex/Gemini Unified Diff as "dirty prototype", must refactor to production-grade code
+- **Dirty Prototype Refactoring**: Treat external model output as "dirty prototype", must refactor to production-grade code
 - **Stop-Loss Mechanism**: Do not proceed to next phase until current phase output is validated
-- **Prerequisite**: Only execute after user explicitly replies "Y" to `/ccg:plan` output (if missing, must confirm first)
+- **Prerequisite**: Only execute after user explicitly replies "Y" to `/multi-plan` output (if missing, must confirm first)
 
 ---
 
@@ -124,11 +125,17 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 
 4. **Task Type Routing**:
 
-   | Task Type | Detection | Route |
-   |-----------|-----------|-------|
-   | **Frontend** | Pages, components, UI, styles, layout | Gemini |
-   | **Backend** | API, interfaces, database, logic, algorithms | Codex |
-   | **Fullstack** | Contains both frontend and backend | Codex ∥ Gemini parallel |
+   | Task Type | Detection | External Mode | Native Mode |
+   |-----------|-----------|---------------|-------------|
+   | **Frontend** | Pages, components, UI, styles, layout | Gemini | code-reviewer (if reviewing) |
+   | **Backend** | API, interfaces, database, logic, algorithms | Codex | code-reviewer (if reviewing) |
+   | **Fullstack** | Contains both frontend and backend | Codex ∥ Gemini parallel | code-reviewer ∥ planner |
+
+5. **Determine Execution Mode**:
+   - Check plan's `MODE` field (EXTERNAL_MODE or NATIVE_MODE)
+   - If EXTERNAL_MODE → Check if codeagent-wrapper exists
+   - If NATIVE_MODE → Use CodeBuddy native agents directly
+   - If codeagent-wrapper missing in EXTERNAL_MODE → Fallback to NATIVE_MODE
 
 ---
 
@@ -136,22 +143,30 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 
 `[Mode: Retrieval]`
 
-**Must use MCP tool for quick context retrieval, do NOT manually read files one by one**
+**Use CodeBuddy native tools** - Glob, Grep, and Read:
 
-Based on "Key Files" list in plan, call `mcp__ace-tool__search_context`:
+Based on "Key Files" list in plan:
 
-```
-mcp__ace-tool__search_context({
-  query: "<semantic query based on plan content, including key files, modules, function names>",
-  project_root_path: "$PWD"
-})
-```
+1. **Glob to find files**:
+   ```
+   Glob({ pattern: "<file pattern from plan>" })
+   ```
+
+2. **Grep for key symbols**:
+   ```
+   Grep({ pattern: "<function/class name from plan>", fileTypes: "<ext>" })
+   ```
+
+3. **Read key files**:
+   ```
+   Read({ filePath: "<path from plan>" })
+   ```
 
 **Retrieval Strategy**:
 - Extract target paths from plan's "Key Files" table
-- Build semantic query covering: entry files, dependency modules, related type definitions
-- If results insufficient, add 1-2 recursive retrievals
-- **NEVER** use Bash + find/ls to manually explore project structure
+- Read each key file completely
+- Follow imports/dependencies as needed
+- Use Grep to find related code patterns
 
 **After Retrieval**:
 - Organize retrieved code snippets
@@ -164,9 +179,13 @@ mcp__ace-tool__search_context({
 
 `[Mode: Prototype]`
 
+**First, determine execution mode from plan**:
+
+#### If EXTERNAL_MODE (codeagent-wrapper available):
+
 **Route Based on Task Type**:
 
-#### Route A: Frontend/UI/Styles → Gemini
+##### Route A: Frontend/UI/Styles → Gemini
 
 **Limit**: Context < 32k tokens
 
@@ -177,7 +196,7 @@ mcp__ace-tool__search_context({
 5. **WARNING**: Ignore Gemini's backend logic suggestions
 6. If plan contains `GEMINI_SESSION`: prefer `resume <GEMINI_SESSION>`
 
-#### Route B: Backend/Logic/Algorithms → Codex
+##### Route B: Backend/Logic/Algorithms → Codex
 
 1. Call Codex (use `${CODEBUDDY_PLUGIN_ROOT}/.ccg/prompts/codex/architect.md`)
 2. Input: Plan content + retrieved context + target files
@@ -185,13 +204,19 @@ mcp__ace-tool__search_context({
 4. **Codex is backend logic authority, leverage its logical reasoning and debug capabilities**
 5. If plan contains `CODEX_SESSION`: prefer `resume <CODEX_SESSION>`
 
-#### Route C: Fullstack → Parallel Calls
+##### Route C: Fullstack → Parallel Calls
 
 1. **Parallel Calls** (`run_in_background: true`):
    - Gemini: Handle frontend part
    - Codex: Handle backend part
 2. Wait for both models' complete results with `TaskOutput`
 3. Each uses corresponding `SESSION_ID` from plan for `resume` (create new session if missing)
+
+#### If NATIVE_MODE (codeagent-wrapper not available):
+
+**Skip Phase 3 entirely** - CodeBuddy will directly implement the plan using Claude's capabilities.
+
+**Reason**: Native subagents (architect, planner) were already consulted during planning phase. The plan is ready for direct implementation.
 
 **Follow the `IMPORTANT` instructions in `Multi-Model Call Specification` above**
 
@@ -200,6 +225,8 @@ mcp__ace-tool__search_context({
 ### Phase 4: Code Implementation
 
 `[Mode: Implement]`
+
+#### EXTERNAL_MODE Implementation
 
 **Claude as Code Sovereign executes the following steps**:
 
@@ -229,6 +256,25 @@ mcp__ace-tool__search_context({
    - Run project's existing lint / typecheck / tests (prioritize minimal related scope)
    - If failed: fix regressions first, then proceed to Phase 5
 
+#### NATIVE_MODE Implementation
+
+**Claude directly implements the plan**:
+
+1. **Follow Plan Steps**:
+   - Implement each step from the plan in order
+   - Use Edit/Write tools for each change
+   - Follow project's existing code standards
+
+2. **Apply Changes**:
+   - Create new files if needed
+   - Modify existing files per plan
+   - Ensure all Key Files are addressed
+
+3. **Self-Verification**:
+   - Run project's existing lint / typecheck / tests
+   - Verify all plan steps are completed
+   - Proceed to Phase 5 for review
+
 ---
 
 ### Phase 5: Audit and Delivery
@@ -237,7 +283,11 @@ mcp__ace-tool__search_context({
 
 #### 5.1 Automatic Audit
 
-**After changes take effect, MUST immediately parallel call** Codex and Gemini for Code Review:
+**After changes take effect, based on execution mode:**
+
+##### If EXTERNAL_MODE:
+
+**MUST immediately parallel call** Codex and Gemini for Code Review:
 
 1. **Codex Review** (`run_in_background: true`):
    - ROLE_FILE: `${CODEBUDDY_PLUGIN_ROOT}/.ccg/prompts/codex/reviewer.md`
@@ -251,10 +301,22 @@ mcp__ace-tool__search_context({
 
 Wait for both models' complete review results with `TaskOutput`. Prefer reusing Phase 3 sessions (`resume <SESSION_ID>`) for context consistency.
 
+##### If NATIVE_MODE:
+
+**Call CodeBuddy code-reviewer agent**:
+
+```
+Task({
+  subagent_name: "code-reviewer",
+  description: "Review implemented changes",
+  prompt: "Review the following implementation based on the plan:\n\n<Plan Content>\n\n<Changed Files>\n\nFocus on:\n- Code quality and maintainability\n- Security vulnerabilities\n- Performance issues\n- Edge cases and error handling"
+})
+```
+
 #### 5.2 Integrate and Fix
 
-1. Synthesize Codex + Gemini review feedback
-2. Weigh by trust rules: Backend follows Codex, Frontend follows Gemini
+1. **EXTERNAL_MODE**: Synthesize Codex + Gemini review feedback, weigh by trust rules
+2. **NATIVE_MODE**: Incorporate code-reviewer feedback
 3. Execute necessary fixes
 4. Repeat Phase 5.1 as needed (until risk is acceptable)
 
@@ -265,14 +327,20 @@ After audit passes, report to user:
 ```markdown
 ## Execution Complete
 
+### Execution Mode
+- **Mode**: <EXTERNAL_MODE | NATIVE_MODE>
+
 ### Change Summary
 | File | Operation | Description |
 |------|-----------|-------------|
 | path/to/file.ts | Modified | Description |
 
 ### Audit Results
-- Codex: <Passed/Found N issues>
-- Gemini: <Passed/Found N issues>
+- **EXTERNAL_MODE**:
+  - Codex: <Passed/Found N issues>
+  - Gemini: <Passed/Found N issues>
+- **NATIVE_MODE**:
+  - code-reviewer: <Passed/Found N issues>
 
 ### Recommendations
 1. [ ] <Suggested test steps>
@@ -283,11 +351,12 @@ After audit passes, report to user:
 
 ## Key Rules
 
-1. **Code Sovereignty** – All file modifications by Claude, external models have zero write access
-2. **Dirty Prototype Refactoring** – Codex/Gemini output treated as draft, must refactor
-3. **Trust Rules** – Backend follows Codex, Frontend follows Gemini
-4. **Minimal Changes** – Only modify necessary code, no side effects
-5. **Mandatory Audit** – Must perform multi-model Code Review after changes
+1. **Hybrid Mode** – External models (Codex/Gemini)优先，fallback to native agents
+2. **Code Sovereignty** – All file modifications by Claude, external models have zero write access
+3. **Dirty Prototype Refactoring** – External model output treated as draft, must refactor
+4. **Trust Rules** – Backend follows Codex/architect, Frontend follows Gemini/planner
+5. **Minimal Changes** – Only modify necessary code, no side effects
+6. **Mandatory Audit** – Must perform code review after changes (external or native)
 
 ---
 
@@ -295,16 +364,18 @@ After audit passes, report to user:
 
 ```bash
 # Execute plan file
-/ccg:execute ${CODEBUDDY_PROJECT_DIR}/.codebuddy/plan/feature-name.md
+/multi-execute ${CODEBUDDY_PROJECT_DIR}/.codebuddy/plan/feature-name.md
 
 # Execute task directly (for plans already discussed in context)
-/ccg:execute implement user authentication based on previous plan
+/multi-execute implement user authentication based on previous plan
 ```
 
 ---
 
-## Relationship with /ccg:plan
+## Relationship with /multi-plan
 
-1. `/ccg:plan` generates plan + SESSION_ID
+1. `/multi-plan` generates plan + MODE + SESSION_ID
 2. User confirms with "Y"
-3. `/ccg:execute` reads plan, reuses SESSION_ID, executes implementation
+3. `/multi-execute` reads plan, detects MODE, executes implementation
+4. EXTERNAL_MODE: Uses Codex/Gemini
+5. NATIVE_MODE: Uses CodeBuddy native agents (architect, planner, code-reviewer)
