@@ -21,7 +21,12 @@
     "workflow",
     "automation",
     "best-practices",
-    "claude-code-migration"
+    "claude-code-migration",
+    "continuous-learning",
+    "pattern-detection"
+  ],
+  "agents": [
+    "./agents/observer.md"
   ],
   "commands": [
     "./commands/tdd.md",

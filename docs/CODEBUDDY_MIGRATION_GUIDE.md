@@ -16,6 +16,7 @@
 5. [迁移后检查](#迁移后检查)
 6. [故障排除](#故障排除)
 7. [最佳实践](#最佳实践)
+8. [资源与支持](#资源与支持)
 
 ---
 
@@ -705,6 +706,171 @@ codebuddy
 
 ---
 
+### 7. Scripts 适配 ⚠️ 环境变量更新
+
+Hook 脚本中使用的环境变量需要更新:
+
+```javascript
+// Claude Code
+const pluginRoot = process.env.CLAUDE_PLUGIN_ROOT;
+
+// CodeBuddy
+const pluginRoot = process.env.CODEBUDDY_PLUGIN_ROOT;
+```
+
+**批量替换**:
+```bash
+# 在所有脚本中替换
+find .codebuddy/scripts -name "*.js" -exec sed -i 's/CLAUDE_PLUGIN_ROOT/CODEBUDDY_PLUGIN_ROOT/g' {} \;
+```
+
+### 8. Continuous Learning v2 适配 ✅ 完全兼容
+
+**概述**: Continuous Learning v2 是基于 instinct（本能）的学习系统，自动从会话中学习模式并演化为技能。
+
+**关键特性**:
+- ✅ 自动观察会话并记录模式
+- ✅ 本能评分系统（置信度评分）
+- ✅ 自动演化为技能 (`/evolve` 命令）
+- ✅ 跨平台路径支持
+
+#### Instinct CLI 工具
+
+**位置**: `skills/continuous-learning-v2/scripts/instinct-cli.py`
+
+**常用命令**:
+```bash
+# 查看本能状态
+python3 "${CODEBUDDY_PLUGIN_ROOT}/skills/continuous-learning-v2/scripts/instinct-cli.py" status
+
+# 导入观察数据
+python3 "${CODEBUDDY_PLUGIN_ROOT}/skills/continuous-learning-v2/scripts/instinct-cli.py" import
+
+# 演化为技能
+python3 "${CODEBUDDY_PLUGIN_ROOT}/skills/continuous-learning-v2/scripts/instinct-cli.py" evolve
+
+# 导出备份
+python3 "${CODEBUDDY_PLUGIN_ROOT}/skills/continuous-learning-v2/scripts/instinct-cli.py" export
+```
+
+#### Observer Agent
+
+**功能**: 自动观察会话并记录工具使用模式。
+
+**触发方式**:
+- PreToolUse hook: 捕获工具调用前
+- PostToolUse hook: 捕获工具调用后
+- Stop hook: 触发 observer 分析并生成报告
+
+**配置**:
+```json
+// .codebuddy/hooks/hooks.json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CODEBUDDY_PLUGIN_ROOT}/hooks/observe.js\" pre",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CODEBUDDY_PLUGIN_ROOT}/hooks/observe.js\" post",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CODEBUDDY_PLUGIN_ROOT}/hooks/run-observer-on-stop.js\"",
+            "async": false
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+#### 数据目录结构
+
+```
+.codebuddy/sessions/
+├── observations/
+│   ├── session_*.jsonl    # 观察数据
+├── instincts/
+│   ├── instinct_*.json     # 本能数据
+└── reports/
+    └── session_*.md        # 观察报告
+```
+
+#### CodeBuddy 路径配置
+
+**环境变量**:
+```bash
+CODEBUDDY_PROJECT_DIR=/path/to/project
+CODEBUDDY_PLUGIN_ROOT=/path/to/ecc/.codebuddy
+```
+
+**路径优先级**:
+1. `CODEBUDDY_PROJECT_DIR` (项目级)
+2. `CODEBUDDY_PLUGIN_ROOT` (插件根目录)
+3. 遗留路径 (~/.claude/)
+
+**示例**:
+```python
+# Python CLI 自动使用环境变量
+from pathlib import Path
+import os
+
+class CodeBuddyPaths:
+    def __init__(self):
+        self.project_dir = Path(os.getenv('CODEBUDDY_PROJECT_DIR', Path.cwd()))
+        self.plugin_root = Path(os.getenv('CODEBUDDY_PLUGIN_ROOT', Path.home() / '.codebuddy'))
+```
+
+#### 迁移注意事项
+
+1. **Observer 路径**: Observer agent 从 `agents/observer.md` 移至 `agents/` 根目录
+2. **Hooks 配置**: 所有 hooks 使用 `CODEBUDDY_PLUGIN_ROOT` 环境变量
+3. **数据迁移**: 可选迁移 `~/.claude/observations/` 到 `.codebuddy/sessions/observations/`
+4. **向后兼容**: 保留 `~/.claude/` 路径作为 fallback
+
+#### 测试验证
+
+```bash
+# 1. 检查 observer hooks 配置
+cat .codebuddy/hooks/hooks.json | jq '.hooks.PreToolUse'
+
+# 2. 测试观察功能
+codebuddy "写一个测试文件"
+# 编辑完成后查看观察报告
+cat .codebuddy/sessions/reports/session_*.md
+
+# 3. 测试 instinct CLI
+python3 "${CODEBUDDY_PLUGIN_ROOT}/skills/continuous-learning-v2/scripts/instinct-cli.py" status
+
+# 4. 测试演化功能
+python3 "${CODEBUDDY_PLUGIN_ROOT}/skills/continuous-learning-v2/scripts/instinct-cli.py" evolve
+```
+
+---
+
 ## 资源与支持
 
 ### 文档
@@ -713,6 +879,8 @@ codebuddy
 - **CodeBuddy API 参考**: https://www.codebuddy.cn/docs/api
 - **ECC GitHub**: https://github.com/affaan-m/everything-claude-code
 - **迁移脚本**: `scripts/migrate-to-codebuddy.js`
+- **Windows 兼容性**: `docs/WINDOWS_COMPATIBILITY.md`
+- **Continuous Learning v2**: `skills/continuous-learning-v2/CL-README.md`
 
 ### 社区
 

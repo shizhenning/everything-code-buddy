@@ -21,7 +21,14 @@ const testFiles = [
   'integration/hooks.test.js',
   'ci/validators.test.js',
   'scripts/setup-package-manager.test.js',
-  'scripts/skill-create-output.test.js'
+  'scripts/skill-create-output.test.js',
+  // CodeBuddy migration tests
+  'migration/test-link-junctions.js',
+  'validation/test-codebuddy-format.js',
+  'validation/test-path-references.js',
+  'validation/test-hooks-config.js',
+  'validation/test-python-cli-paths.js',
+  'validation/test-mcp-config.js'
 ];
 
 const BOX_W = 58; // inner width between ║ delimiters

@@ -21,15 +21,70 @@ from collections import defaultdict
 from typing import Optional
 
 # ─────────────────────────────────────────────
-# Configuration
+# Path Configuration (CodeBuddy Standards)
 # ─────────────────────────────────────────────
 
-HOMUNCULUS_DIR = Path.home() / ".claude" / "homunculus"
-INSTINCTS_DIR = HOMUNCULUS_DIR / "instincts"
-PERSONAL_DIR = INSTINCTS_DIR / "personal"
-INHERITED_DIR = INSTINCTS_DIR / "inherited"
-EVOLVED_DIR = HOMUNCULUS_DIR / "evolved"
-OBSERVATIONS_FILE = HOMUNCULUS_DIR / "observations.jsonl"
+class CodeBuddyPaths:
+    """CodeBuddy 路径管理（遵循目录规范）"""
+
+    def __init__(self):
+        # 环境变量
+        self.project_dir = Path(os.getenv('CODEBUDDY_PROJECT_DIR', Path.cwd()))
+        self.plugin_root = Path(os.getenv('CODEBUDDY_PLUGIN_ROOT', Path.home() / '.codebuddy'))
+
+        # 用户目录（使用 ~ 快捷方式，跨平台）
+        self.user_codebuddy = Path("~/.codebuddy").expanduser()
+        self.user_claude = Path("~/.claude").expanduser()
+
+    @property
+    def homunculus_dir(self) -> Path:
+        """项目级 homunculus 目录（优先）或用户级目录"""
+        project_homunculus = self.project_dir / ".codebuddy" / "homunculus"
+        user_homunculus = self.user_codebuddy / "homunculus"
+        legacy_homunculus = self.user_claude / "homunculus"
+
+        # 优先级：项目级 > 用户级 > 遗留
+        if project_homunculus.exists():
+            return project_homunculus
+        elif user_homunculus.exists():
+            return user_homunculus
+        else:
+            return project_homunculus  # 返回项目级路径（即使不存在）
+
+    @property
+    def instincts_dir(self) -> Path:
+        return self.homunculus_dir / "instincts"
+
+    @property
+    def personal_dir(self) -> Path:
+        return self.instincts_dir / "personal"
+
+    @property
+    def inherited_dir(self) -> Path:
+        return self.instincts_dir / "inherited"
+
+    @property
+    def evolved_dir(self) -> Path:
+        return self.homunculus_dir / "evolved"
+
+    @property
+    def observations_file(self) -> Path:
+        return self.homunculus_dir / "observations.jsonl"
+
+    @property
+    def config_file(self) -> Path:
+        return self.homunculus_dir / "config.json"
+
+
+# 初始化路径管理
+paths = CodeBuddyPaths()
+HOMUNCULUS_DIR = paths.homunculus_dir
+INSTINCTS_DIR = paths.instincts_dir
+PERSONAL_DIR = paths.personal_dir
+INHERITED_DIR = paths.inherited_dir
+EVOLVED_DIR = paths.evolved_dir
+OBSERVATIONS_FILE = paths.observations_file
+CONFIG_FILE = paths.config_file
 
 # Ensure directories exist
 for d in [PERSONAL_DIR, INHERITED_DIR, EVOLVED_DIR / "skills", EVOLVED_DIR / "commands", EVOLVED_DIR / "agents"]:
