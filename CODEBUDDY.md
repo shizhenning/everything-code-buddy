@@ -150,6 +150,74 @@ The repository includes pre-translated configurations for different IDEs:
 
 ### Testing and Validation
 
-- Comprehensive test suite in `tests/` (lib/, hooks/, run-all.js)
+- Comprehensive test suite in `tests/` (11 test files covering lib/, hooks/, integration, CI validation)
+- Key test: `tests/hooks/hooks.test.js` (175KB - most comprehensive test coverage)
 - CI validation scripts in `scripts/ci/` validate structure of agents, commands, rules, skills, hooks
 - Tests ensure plugin compatibility and prevent regressions (e.g., hooks duplicate detection)
+
+### Known Issues and Caveats
+
+**Hooks Duplication Prevention**
+- Claude Code v2.1+ automatically loads `hooks/hooks.json` from installed plugins
+- Adding `"hooks"` field to `.claude-plugin/plugin.json` causes duplicate detection errors
+- This is strictly enforced - DO NOT add hooks field to plugin manifest
+
+**Rules Installation Limitations**
+- Claude Code plugin system does not support distributing `rules` via plugins
+- Users must manually run `./install.sh <language>` to install rules
+- Project-level rules in `.claude/rules/` take precedence over user-level `~/.claude/rules/`
+- Warning: Running `./install.sh` in a project with existing project-level rules will overwrite them
+
+**Platform-Specific Considerations**
+- **Windows**: PowerShell execution flow for hooks may require explicit permissions
+- **Cross-platform scripts**: All hooks written in Node.js for consistency, but platform-specific paths must use `path` module
+- **Package manager conflicts**: When multiple detection methods disagree, the first available package manager in priority order is used
+
+**Continuous Learning v2 (Instincts)**
+- Instinct import/export requires proper session persistence
+- Confidence scores are calculated based on frequency and success rate (exact algorithm not fully documented)
+- Clustering instincts into skills via `/evolve` command uses heuristic grouping
+
+**Token Optimization Trade-offs**
+- Lowering `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` from 95% to 50% causes earlier compression but may improve context quality
+- Reducing `MAX_THINKING_TOKENS` from 31,999 to 10,000 saves ~70% thinking costs but may reduce reasoning depth
+- Limiting MCP servers to <10 and tools to <80 is recommended but not enforced
+
+**Session Management**
+- Session evaluation runs at session end; may add overhead on large projects
+- Timezone handling in session aliases uses system local time
+- Session state persistence may fail if `~/.claude-code-sessions/` directory has permission issues
+
+**Agent Auto-Activation**
+- Some agents (e.g., `architect`, `database-reviewer`) activate automatically based on context
+- Auto-activation conditions are heuristically determined and not always predictable
+- Manual invocation via Task tool is always possible
+
+### Documentation References
+
+- **Project evaluation**: `docs/ECC项目深度评估报告.md` - Comprehensive analysis with 5/5 rating
+- **Caveats and issues**: `docs/ECC深度分析补充-不明确与潜在问题.md` - Known limitations and risk assessment
+- **Detailed architecture**: `docs/CodeBuddy体系结构文档.md` - 5555-line in-depth documentation
+- **Quick start**: `the-shortform-guide.md` (430 lines)
+- **Full guide**: `the-longform-guide.md` (354 lines)
+
+### Project Statistics
+
+| Component | Count | Notes |
+|-----------|-------|-------|
+| Agents | 13 | Multi-model selection (opus/sonnet/haiku) |
+| Commands | 31 | Slash commands with agent/skill orchestration |
+| Skills | 53+ | Organized by domain and language |
+| Rules | 28 | Common + language-specific (TS/Python/Go) |
+| Hooks | 6 types | PreToolUse, PostToolUse, SessionStart, Stop, PreCompact, SessionEnd |
+| MCP Configs | 14 servers | GitHub, Supabase, Vercel, etc. |
+| Tests | 11 files | ~630KB total test code |
+| Documentation | 500+ files | Multi-language support |
+
+### Key Success Metrics
+
+- **Production validation**: 10+ months of high-intensity daily use
+- **Community adoption**: 42K+ GitHub stars, 5K+ forks, 24 contributors
+- **Hackathon recognition**: Anthropic Hackathon winner
+- **Test coverage**: Comprehensive with hooks.test.js at 175KB alone
+- **Cross-platform**: Windows/macOS/Linux full support
