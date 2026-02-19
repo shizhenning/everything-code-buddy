@@ -1,4 +1,5 @@
 {
+  "$schema": "https://json.schemastore.org/codebuddy-settings.json",
   "language": "简体中文",
   "model": "auto",
   "permissions": {

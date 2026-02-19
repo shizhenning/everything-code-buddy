@@ -28,10 +28,17 @@ function getClaudeDir() {
 }
 
 /**
- * Get the sessions directory
+ * Get the CodeBuddy config directory
+ */
+function getCodebuddyDir() {
+  return path.join(getHomeDir(), '.codebuddy');
+}
+
+/**
+ * Get the sessions directory (CodeBuddy sessions)
  */
 function getSessionsDir() {
-  return path.join(getClaudeDir(), 'sessions');
+  return path.join(getCodebuddyDir(), 'sessions');
 }
 
 /**
@@ -492,6 +499,7 @@ module.exports = {
   // Directories
   getHomeDir,
   getClaudeDir,
+  getCodebuddyDir,
   getSessionsDir,
   getLearnedSkillsDir,
   getTempDir,

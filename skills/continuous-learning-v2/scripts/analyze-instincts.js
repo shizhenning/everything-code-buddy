@@ -190,4 +190,8 @@ function main() {
 }
 
 // 运行
-main().catch(console.error);
+try {
+  main();
+} catch (error) {
+  console.error(error);
+}
