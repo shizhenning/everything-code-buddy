@@ -14,7 +14,6 @@
     "skills": [
       "./skills/"
     ],
-    "hooks": "./hooks/hooks.json",
     "instructions": [
       "./instructions/common/",
       "./instructions/typescript/",

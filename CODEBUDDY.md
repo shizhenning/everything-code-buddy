@@ -71,14 +71,15 @@ node scripts/migrate-to-codebuddy.js --no-symlinks
 
 ## Project Architecture
 
-This is a **Claude Code plugin** repository containing battle-tested configurations for AI-assisted development. The project provides agents, skills, commands, hooks, and rules that integrate with Claude Code CLI.
+This is a **CodeBuddy Plugin** repository containing battle-tested configurations for AI-assisted development. The project provides agents, skills, commands, hooks, and rules for CodeBuddy IDE (and compatible with Claude Code CLI).
 
 ### Core Components
 
 **Plugin System**
-- `.claude-plugin/plugin.json` - Plugin manifest defining available components
-- `.claude-plugin/marketplace.json` - Marketplace catalog for `/plugin marketplace add`
-- Hooks in `hooks/hooks.json` are auto-loaded by Claude Code v2.1+ (do NOT add to plugin.json)
+- `.claude-plugin/plugin.json` - Plugin manifest for Claude Code (CLI)
+- `.codebuddy/plugin.json` - Plugin manifest for CodeBuddy IDE
+- `.claude-plugin/marketplace.json` - Marketplace catalog for Claude Code CLI
+- Hooks: `hooks/hooks.json` for Claude Code CLI, `.codebuddy/hooks/hooks.json` for CodeBuddy IDE
 
 **Agents** (`agents/`)
 - 13 specialized subagents for delegated tasks (planner, code-reviewer, security-reviewer, etc.)
@@ -96,10 +97,11 @@ This is a **Claude Code plugin** repository containing battle-tested configurati
 - Commands orchestrate workflows using agents and skills
 - Each command is a markdown file with YAML frontmatter description
 
-**Hooks** (`hooks/`)
-- Trigger-based automations that fire on specific events (PreToolUse, PostToolUse, SessionStart, Stop)
-- Hooks are defined in `hooks/hooks.json` using matcher syntax
-- Cross-platform Node.js implementations in `scripts/hooks/` (session-start.js, session-end.js, etc.)
+**Hooks** (`hooks/` and `.codebuddy/hooks/`)
+- Trigger-based automations that fire on specific events (PreToolUse, PostToolUse, SessionStart, Stop, PreCompact, SessionEnd)
+- **CodeBuddy IDE**: `.codebuddy/hooks/hooks.json` - Hooks receive JSON on stdin with `tool_name`, `tool_input`, `tool_output`
+- **Claude Code CLI**: `hooks/hooks.json` - Hooks can use command-line arguments
+- Cross-platform Node.js implementations in `scripts/hooks/` (session-start.js, session-end.js, suggest-compact.js, etc.)
 
 **Rules** (`rules/`)
 - Always-follow guidelines organized into `common/` (language-agnostic) + language-specific dirs
@@ -120,15 +122,17 @@ All hooks and scripts are written in Node.js for Windows/macOS/Linux compatibili
 Priority order: environment variable (`CLAUDE_PACKAGE_MANAGER`) → project config (`.claude/package-manager.json`) → package.json → lock files → global config → first available
 
 **Installation**
-- Claude Code: `/plugin marketplace add affaan-m/everything-claude-code` then `/plugin install everything-claude-code@everything-claude-code`
+- **CodeBuddy IDE**: Clone/open repo, plugin auto-detected via `.codebuddy/plugin.json`
+- **Claude Code CLI**: `/plugin marketplace add affaan-m/everything-claude-code` then `/plugin install everything-claude-code@everything-claude-code`
 - Rules must be installed manually via `./install.sh <language>`
 - Cursor IDE: `./install.sh --target cursor <language>`
 
 ### Critical Constraints
 
 **Hooks Auto-Loading**
-- Claude Code v2.1+ automatically loads `hooks/hooks.json` from installed plugins
-- Do NOT add a `"hooks"` field to `.claude-plugin/plugin.json` - this causes duplicate detection errors
+- **CodeBuddy IDE**: Automatically loads `.codebuddy/hooks/hooks.json`
+- **Claude Code CLI v2.1+**: Automatically loads `hooks/hooks.json` from installed plugins
+- Do NOT add a `"hooks"` field to `.claude-plugin/plugin.json` (Claude Code CLI) - this causes duplicate detection errors
 - This is enforced by regression tests (see issues #29, #52, #103)
 
 **Plugin Manifest**
@@ -138,15 +142,59 @@ Priority order: environment variable (`CLAUDE_PACKAGE_MANAGER`) → project conf
 - See `.claude-plugin/PLUGIN_SCHEMA_NOTES.md` for undocumented but strict constraints
 
 **Rules Distribution**
-- The Claude Code plugin system does not support distributing `rules` via plugins
+- The Claude Code CLI plugin system does not support distributing `rules` via plugins
 - Users must manually run `./install.sh <language>` to install rules to `~/.claude/rules/`
+- CodeBuddy IDE supports rules distribution via `.codebuddy/rules/`
 
 ### Multi-IDE Support
 
-The repository includes pre-translated configurations for different IDEs:
+The repository includes configurations for different AI assistants:
+
+- **CodeBuddy IDE**: `.codebuddy/` directory - Full native support (13 agents, 31 commands, 53+ skills, 6 hook types)
+- **Claude Code CLI**: `.claude-plugin/` directory - Plugin manifest, agents, skills, commands, hooks
 - **Cursor**: `.cursor/` directory with rules, agents, skills, commands adapted for Cursor format
 - **OpenCode**: `.opencode/` directory with full plugin support (12 agents, 24 commands, 16 skills)
-- **CodeBuddy**: Migration support via `scripts/migrate-to-codebuddy.js` with symlink handling
+
+### CodeBuddy IDE Hook System
+
+**Hook Input Format (JSON on stdin)**:
+```json
+{
+  "tool_name": "ReadFile|Edit|Write|Bash|...",
+  "tool_input": {
+    "file_path": "...",
+    "command": "...",
+    "old_string": "...",
+    "new_string": "...",
+    "content": "..."
+  },
+  "tool_output": {
+    "output": "..."
+  }
+}
+```
+
+**Hook Output Requirements**:
+- Must output original JSON data to stdout: `console.log(data)`
+- Warn via stderr: `console.error('[Hook] Warning message')`
+- Block (PreToolUse only): `process.exit(2)`
+
+**Example Hook**:
+```javascript
+let data = '';
+process.stdin.on('data', chunk => data += chunk);
+process.stdin.on('end', () => {
+  const input = JSON.parse(data);
+  const toolName = input.tool_name;
+  const toolInput = input.tool_input;
+
+  // Your hook logic
+  console.error('[Hook] Processing:', toolName);
+
+  // Always output original data
+  console.log(data);
+});
+```
 
 ### Testing and Validation
 
@@ -158,13 +206,15 @@ The repository includes pre-translated configurations for different IDEs:
 ### Known Issues and Caveats
 
 **Hooks Duplication Prevention**
-- Claude Code v2.1+ automatically loads `hooks/hooks.json` from installed plugins
-- Adding `"hooks"` field to `.claude-plugin/plugin.json` causes duplicate detection errors
-- This is strictly enforced - DO NOT add hooks field to plugin manifest
+- **CodeBuddy IDE**: Uses `.codebuddy/hooks/hooks.json` exclusively
+- **Claude Code CLI v2.1+**: Automatically loads `hooks/hooks.json` from installed plugins
+- Adding `"hooks"` field to `.claude-plugin/plugin.json` (Claude Code CLI) causes duplicate detection errors
+- This is strictly enforced - DO NOT add hooks field to plugin manifest (for Claude Code CLI)
 
 **Rules Installation Limitations**
-- Claude Code plugin system does not support distributing `rules` via plugins
-- Users must manually run `./install.sh <language>` to install rules
+- **Claude Code CLI**: Plugin system does not support distributing `rules` via plugins
+- Users must manually run `./install.sh <language>` to install rules to `~/.claude/rules/`
+- **CodeBuddy IDE**: Supports rules via `.codebuddy/rules/` directory
 - Project-level rules in `.claude/rules/` take precedence over user-level `~/.claude/rules/`
 - Warning: Running `./install.sh` in a project with existing project-level rules will overwrite them
 
@@ -213,6 +263,7 @@ The repository includes pre-translated configurations for different IDEs:
 | MCP Configs | 14 servers | GitHub, Supabase, Vercel, etc. |
 | Tests | 11 files | ~630KB total test code |
 | Documentation | 500+ files | Multi-language support |
+| IDE Support | 4 | CodeBuddy (native), Claude Code CLI, Cursor, OpenCode |
 
 ### Key Success Metrics
 
