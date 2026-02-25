@@ -9,6 +9,7 @@
       "Bash(node:*)",
       "Bash(python:*)",
       "Read",
+      "Write",
       "Edit",
       "ReplaceInFile"
     ],
@@ -73,7 +74,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"const fs=require('fs');let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const i=JSON.parse(d);const p=i.tool_input?.file_path||'';if(/\\.(md|txt)$/.test(p)&&!/(README|CODEBUDDY|AGENTS|CONTRIBUTING)\\.md$/.test(p)&&!/\\.codebuddy\\/plans\\//.test(p)){console.error('[Hook] BLOCKED: Unnecessary documentation file creation');console.error('[Hook] File: '+p);console.error('[Hook] Use README.md for documentation instead');process.exit(2)}}catch{}console.log(d)})\""
+            "command": "node -e \"const fs=require('fs');let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const i=JSON.parse(d);const p=i.tool_input?.file_path||'';if(/\\.(md|txt)$/.test(p)&&!/(README|CODEBUDDY|AGENTS|CONTRIBUTING|ARCHITECTURE|ADR|DESIGN)\\.md$/.test(p)&&!/(\\/docs\\/CODEMAPS|\\.codebuddy\\/plans|docs\\/architecture|docs\\/adr)/.test(p)){console.error('[Hook] BLOCKED: Unnecessary documentation file creation');console.error('[Hook] File: '+p);console.error('[Hook] Use README.md for documentation instead');process.exit(2)}}catch{}console.log(d)})\""
           }
         ],
         "description": "Block creation of random .md files - keeps docs consolidated"
