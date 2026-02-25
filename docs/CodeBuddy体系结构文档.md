@@ -219,37 +219,85 @@ CodeBuddy 使用分层配置系统，优先级从高到低为：
 ```json
 {
   "hooks": {
-    "PreToolUse": {
-      "Bash": "echo 'Running command...'"
-    },
-    "PostToolUse": {
-      "Bash": "echo 'Command finished.'"
-    }
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'Running command...'"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'Command finished.'"
+          }
+        ]
+      }
+    ]
   }
 }
 ```
 
 **可用的事件类型（Hook Types）**：
 
-1. **`PreToolUse`**：在**任何工具即将被使用之前**触发。
-2. **`PostToolUse`**：在**任何工具使用完成之后**触发。
+CodeBuddy hooks 支持 **9 个完整事件类型**（与 CLI Hooks 文档一致）：
 
-*(注：settings.json 中的 hooks 配置支持这两类基本事件。更精细化的、针对特定工具的事件可能需要参考 IDE Hooks 文档)*
+| 事件类型 | 触发时机 | 是否支持 matcher | 说明 |
+|----------|----------|------------------|------|
+| **PreToolUse** | 工具执行前 | ✅ 是（按工具名称） | 例如 "Bash", "Write|Edit", "*" |
+| **PostToolUse** | 工具成功执行后 | ✅ 是（按工具名称） | 例如 "Bash", "*" |
+| **PreCompact** | 执行上下文压缩前 | ✅ 是（`manual`/`auto`） | 手动压缩或自动压缩 |
+| **SessionStart** | 会话创建或恢复时 | ✅ 是（`startup`/`resume`/`clear`/`compact`） | 会话启动类型 |
+| **SessionEnd** | 会话结束时 | ✅ 是（退出原因） | 清理资源、持久化日志 |
+| **Stop** | 主代理响应结束时 | ❌ 否 | 要求继续工作、追加提醒 |
+| **UserPromptSubmit** | 用户提交消息后（不含内部命令） | ❌ 否 | 内容审查、上下文注入 |
+| **SubagentStop** | 子代理（TaskTool）结束时 | ❌ 否 | 子任务后续处理 |
+| **Notification** | 发送通知时 | ✅ 是（按通知类型） | 桌面提醒、IM 通知 |
 
 **配置示例说明**：
 
 ```json
 {
   "hooks": {
-    "PreToolUse": {  // 工具使用前触发
-      "Bash": "echo '[INFO] Tool is about to be used.'"  // 触发一个 Bash 命令
-    },
-    "PostToolUse": {  // 工具使用后触发
-      "Bash": "echo '[INFO] Tool execution completed.'"  // 触发另一个 Bash 命令
-    }
+    "PreToolUse": [  // 工具使用前触发
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '[INFO] Tool is about to be used.'"  // 触发一个 Bash 命令
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [  // 工具使用后触发
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '[INFO] Tool execution completed.'"  // 触发另一个 Bash 命令
+          }
+        ]
+      }
+    ]
   }
 }
 ```
+
+**Hook 类型说明**：
+
+| Hook 类型 | 说明 | 适用事件 |
+|-----------|------|----------|
+| **command** | 执行 Bash 命令 | 所有事件 |
+| **prompt** | 使用 LLM 进行基于提示词的评估 | 仅 `Stop`、`UserPromptSubmit`、`PreToolUse` 事件 |
 
 #### 常见场景配置
 
@@ -6455,7 +6503,7 @@ Hooks (钩子) 是在特定事件发生时自动执行的脚本,用于自动化�
 | Hook 类型 | Claude Code | CodeBuddy |
 |-----------|-------------|-----------|
 | **Command** | ✅ 支持 | ✅ 支持 |
-| **Prompt** | ✅ 支持 | ❌ 不支持 |
+| **Prompt** | ✅ 支持 | ✅ 支持（仅 Stop、UserPromptSubmit、PreToolUse 事件） |
 | **Agent** | ✅ 支持 | ❌ 不支持 |
 
 #### 四、环境变量映射
@@ -6502,9 +6550,8 @@ find .claude/scripts -name "*.js" -exec sed -i 's/CODEBUDDY_/CLAUDE_/g' {} \;
 - **简化模式**：主要依赖 exit codes (0=允许, 2=阻止)
 - **JSON 输出**：支持基础 decision 字段
 - **重要限制**：
-  - ❌ **不支持** Prompt 类型的 hooks
   - ❌ **不支持** Agent 类型的 hooks
-  - 仅支持 Command 类型的 hooks
+  - 支持 Command 和 Prompt 类型的 hooks（Prompt 类型仅适用于 Stop、UserPromptSubmit、PreToolUse 事件）
 
 #### 六、Matcher 支持对比
 
@@ -6520,107 +6567,29 @@ find .claude/scripts -name "*.js" -exec sed -i 's/CODEBUDDY_/CLAUDE_/g' {} \;
 
 #### 七、配置文件位置
 
-| 平台 | 用户级 | 项目级 | 插件级（v2.1+ 自动加载）|
-|-----|--------|--------|----------------------------|
-| Claude Code | `~/.claude/settings.json` | `.claude/settings.json` | `.claude-plugin/plugin.json` 必须包含 hooks 字段 |
-| CodeBuddy | `~/.codebuddy/settings.json` | `.codebuddy/settings.json` | `.codebuddy-plugin/hooks/hooks.json` 自动加载 |
+> ⚠️ **重要**：CodeBuddy 使用统一的 `settings.json` 配置方式。虽然插件目录下可能有 `hooks/hooks.json` 文件，但仅作为配置来源，最终会合并到主 `settings.json` 的 `hooks` 字段中，不存在独立的 `hooks.json` 配置文件入口。
+
+| 平台 | 用户级配置 | 项目级配置 | 配置方式 |
+|-----|-----------|-----------|----------|
+| Claude Code | `~/.claude/settings.json` | `.claude/settings.json` | hooks 配置在 `settings.json` 中 |
+| CodeBuddy | `~/.codebuddy/settings.json` | `.codebuddy/settings.json` | hooks 配置在 `settings.json` 中（数组格式） |
+| **CodeBuddy 扩展** | `~/.codebuddy/settings.local.json` | `.codebuddy/settings.local.json` | 本地配置（通常不提交到版本控制） |
 
 #### 八、迁移建议
 
 **从 Claude Code 迁移到 CodeBuddy：**
-1. **事件类型**：移除 PostToolUseFailure, PermissionRequest, SubagentStart, TeammateIdle, TaskCompleted
-2. **Hook 类型**：将 prompt/agent hooks 转换为 command hooks
-3. **环境变量**：批量替换 `CLAUDE_` → `CODEBUDDY_`
-4. **决策控制**：简化 JSON 输出，优先使用 exit codes
+1. **配置方式**：使用 `.codebuddy/settings.json`（数组格式）
+2. **事件类型**：移除 PostToolUseFailure, PermissionRequest, SubagentStart, TeammateIdle, TaskCompleted
+3. **Hook 类型**：保留 Command 和 Prompt 类型的 hooks，移除 Agent 类型的 hooks
+4. **环境变量**：批量替换 `CLAUDE_` → `CODEBUDDY_`
+5. **决策控制**：简化 JSON 输出，优先使用 exit codes
 
 **从 CodeBuddy 迁移到 Claude Code：**
 1. **扩展支持**：可使用更多事件类型（如 TeammateIdle 用于质量门控）
-2. **高级 Hooks**：可使用 prompt/agent hooks 实现智能决策
+2. **高级 Hooks**：可使用 agent hooks 实现智能决策
 3. **环境变量**：批量替换 `CODEBUDDY_` → `CLAUDE_`
 
-### 配置格式
-
-⚠️ **重要说明 - CodeBuddy v2.1+ Hooks 自动加载**：
-
-CodeBuddy v2.1+ 会自动加载 `hooks/hooks.json` 文件，无需在 `plugin.json` 中声明。但如果 `plugin.json` 包含 `hooks` 字段，它会与 `hooks/hooks.json` 深度合并。
-
-**方式1：插件级 hooks/hooks.json（推荐）**
-
-```json
-// .codebuddy-plugin/hooks/hooks.json
-{
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Write|Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "npx prettier --write \"$FILE_PATH\"",
-            "timeout": 5000
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-**方式2：plugin.json 内联 hooks**
-
-```json
-// .codebuddy-plugin/plugin.json
-{
-  "name": "my-plugin",
-  "version": "2.1.0",
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Write|Edit",
-        "hooks": [...]
-      }
-    ]
-  }
-}
-```
-
-**方式3：plugin.json 引用外部文件**
-
-```json
-// .codebuddy-plugin/plugin.json
-{
-  "name": "my-plugin",
-  "version": "2.1.0",
-  "hooks": "${CODEBUDDY_PLUGIN_ROOT}/hooks/hooks.json"
-}
-```
-
-**与 Claude Code 的区别**：
-- Claude Code **必须**在 `plugin.json` 中声明 `hooks` 字段
-- CodeBuddy v2.1+ **自动加载** `hooks/hooks.json`，无需声明
-
-#### 用户级/项目级配置
-
-```json
-{
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "npx prettier --write \"$FILE_PATH\"",
-            "timeout": 5000
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-#### 完整配置
+#### 用户级/项目级配置示例
 
 ```json
 {

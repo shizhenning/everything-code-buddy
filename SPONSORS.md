@@ -24,10 +24,10 @@ Thank you to everyone who sponsors this project! Your support keeps the ECC ecos
 
 Your sponsorship helps:
 
-- **Ship faster** â€” More time dedicated to building tools and features
-- **Keep it free** â€” Premium features fund the free tier for everyone
-- **Better support** â€” Sponsors get priority responses
-- **Shape the roadmap** â€” Pro+ sponsors vote on features
+- **Ship faster** â€?More time dedicated to building tools and features
+- **Keep it free** â€?Premium features fund the free tier for everyone
+- **Better support** â€?Sponsors get priority responses
+- **Shape the roadmap** â€?Pro+ sponsors vote on features
 
 ## Sponsor Tiers
 
@@ -40,7 +40,7 @@ Your sponsorship helps:
 | Business | $500/mo | 25 seats, consulting credit |
 | Enterprise | $2K/mo | Unlimited seats, custom tools |
 
-[**Become a Sponsor â†’**](https://github.com/sponsors/affaan-m)
+[**Become a Sponsor â†?*](https://github.com/sponsors/affaan-m)
 
 ---
 

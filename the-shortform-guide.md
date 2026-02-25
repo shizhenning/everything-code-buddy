@@ -21,12 +21,12 @@ After a long session of coding with Opus 4.5, you want to clean out dead code an
 
 Commands are skills executed via slash commands. They overlap but are stored differently:
 
-- **Skills**: `~/.claude/skills/` - broader workflow definitions
-- **Commands**: `~/.claude/commands/` - quick executable prompts
+- **Skills**: `~/.codebuddy/skills/` - broader workflow definitions
+- **Commands**: `~/.codebuddy/commands/` - quick executable prompts
 
 ```bash
 # Example skill structure
-~/.claude/skills/
+~/.codebuddy/skills/
   pmx-guidelines.md      # Project-specific patterns
   coding-standards.md    # Language best practices
   tdd-workflow/          # Multi-file skill with README.md
@@ -81,7 +81,7 @@ Subagents work nicely with skills - a subagent capable of executing a subset of 
 
 ```bash
 # Example subagent structure
-~/.claude/agents/
+~/.codebuddy/agents/
   planner.md           # Feature implementation planning
   architect.md         # System design decisions
   tdd-guide.md         # Test-driven development
@@ -104,7 +104,7 @@ Your `.rules` folder holds `.md` files with best practices Claude should ALWAYS 
 2. **Rules folder** - Modular `.md` files grouped by concern
 
 ```bash
-~/.claude/rules/
+~/.codebuddy/rules/
   security.md      # No hardcoded secrets, validate inputs
   coding-style.md  # Immutability, file organization
   testing.md       # TDD workflow, 80% coverage
@@ -373,7 +373,7 @@ affoon:~ ctx:65% Opus 4.5 19:52
 ### Rules Structure
 
 ```
-~/.claude/rules/
+~/.codebuddy/rules/
   security.md      # Mandatory security checks
   coding-style.md  # Immutability, file size limits
   testing.md       # TDD, 80% coverage
@@ -387,7 +387,7 @@ affoon:~ ctx:65% Opus 4.5 19:52
 ### Subagents
 
 ```
-~/.claude/agents/
+~/.codebuddy/agents/
   planner.md           # Break down features
   architect.md         # System design
   tdd-guide.md         # Write tests first

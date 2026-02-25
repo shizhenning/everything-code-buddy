@@ -58,7 +58,7 @@ git checkout -b feat/my-contribution
 # 3. Add your contribution (see sections below)
 
 # 4. Test locally
-cp -r skills/my-skill ~/.claude/skills/  # for skills
+cp -r skills/my-skill ~/.codebuddy/skills/  # for skills
 # Then test with Claude Code
 
 # 5. Submit PR

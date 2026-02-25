@@ -53,7 +53,7 @@ Once you have your plan set and context cleared (default option in plan mode in 
 
 **Advanced: Dynamic System Prompt Injection**
 
-One pattern I picked up: instead of solely putting everything in CLAUDE.md (user scope) or `.claude/rules/` (project scope) which loads every session, use CLI flags to inject context dynamically.
+One pattern I picked up: instead of solely putting everything in CLAUDE.md (user scope) or `.codebuddy/rules/` (project scope) which loads every session, use CLI flags to inject context dynamically.
 
 ```bash
 claude --system-prompt "$(cat memory.md)"
@@ -65,13 +65,13 @@ This lets you be more surgical about what context loads when. System prompt cont
 
 ```bash
 # Daily development
-alias claude-dev='claude --system-prompt "$(cat ~/.claude/contexts/dev.md)"'
+alias claude-dev='claude --system-prompt "$(cat ~/.codebuddy/contexts/dev.md)"'
 
 # PR review mode
-alias claude-review='claude --system-prompt "$(cat ~/.claude/contexts/review.md)"'
+alias claude-review='claude --system-prompt "$(cat ~/.codebuddy/contexts/review.md)"'
 
 # Research/exploration mode
-alias claude-research='claude --system-prompt "$(cat ~/.claude/contexts/research.md)"'
+alias claude-research='claude --system-prompt "$(cat ~/.codebuddy/contexts/research.md)"'
 ```
 
 **Advanced: Memory Persistence Hooks**
@@ -269,11 +269,11 @@ Sub-agents exist to save context by returning summaries instead of dumping every
 **Orchestrator with Sequential Phases:**
 
 ```markdown
-Phase 1: RESEARCH (use Explore agent) â†’ research-summary.md
-Phase 2: PLAN (use planner agent) â†’ plan.md
-Phase 3: IMPLEMENT (use tdd-guide agent) â†’ code changes
-Phase 4: REVIEW (use code-reviewer agent) â†’ review-comments.md
-Phase 5: VERIFY (use build-error-resolver if needed) â†’ done or loop back
+Phase 1: RESEARCH (use Explore agent) â†?research-summary.md
+Phase 2: PLAN (use planner agent) â†?plan.md
+Phase 3: IMPLEMENT (use tdd-guide agent) â†?code changes
+Phase 4: REVIEW (use code-reviewer agent) â†?review-comments.md
+Phase 5: VERIFY (use build-error-resolver if needed) â†?done or loop back
 ```
 
 **Key rules:**

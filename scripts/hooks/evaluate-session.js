@@ -4,8 +4,8 @@
  *
  * Cross-platform (Windows, macOS, Linux)
  *
- * Runs on Stop hook to extract reusable patterns from Claude Code sessions.
- * Reads transcript_path from stdin JSON (Claude Code hook input).
+ * Runs on Stop hook to extract reusable patterns from CodeBuddy sessions.
+ * Reads transcript_path from stdin JSON (CodeBuddy hook input).
  *
  * Why Stop hook instead of UserPromptSubmit:
  * - Stop runs once at session end (lightweight)
@@ -49,7 +49,7 @@ async function main() {
     transcriptPath = input.transcript_path;
   } catch {
     // Fallback: try env var for backwards compatibility
-    transcriptPath = process.env.CLAUDE_TRANSCRIPT_PATH;
+    transcriptPath = process.env.CODEBUDDY_TRANSCRIPT_PATH;
   }
 
   // Get script directory to find config
