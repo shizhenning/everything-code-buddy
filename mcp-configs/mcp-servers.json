@@ -1,5 +1,10 @@
 {
   "mcpServers": {
+    "ace-tool": {
+      "command": "npx",
+      "args": ["-y", "@ace-tool/mcp-server"],
+      "description": "Code context enhancement and retrieval for CodeBuddy"
+    },
     "github": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-github"],
@@ -83,9 +88,10 @@
     }
   },
   "_comments": {
-    "usage": "Copy the servers you need to your ~/.claude.json mcpServers section",
+    "usage": "Copy servers you need to your ~/.codebuddy/mcp.json",
     "env_vars": "Replace YOUR_*_HERE placeholders with actual values",
-    "disabling": "Use disabledMcpServers array in project config to disable per-project",
-    "context_warning": "Keep under 10 MCPs enabled to preserve context window"
+    "disabling": "Set \"disabled\": true in individual server config to disable per-server",
+    "context_warning": "Keep under 10 MCPs enabled to preserve context window",
+    "codebuddy_note": "This configuration is for CodeBuddy MCP servers in ~/.codebuddy/mcp.json"
   }
 }
