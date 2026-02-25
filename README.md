@@ -540,7 +540,7 @@ Copy the hooks from `hooks/hooks.json` to your `~/.codebuddy/settings.json`.
 
 #### Configure MCPs
 
-Copy desired MCP servers from `mcp-configs/mcp-servers.json` to your `~/.claude.json`.
+Copy desired MCP servers from `mcp-configs/mcp-servers.json` to your `~/.codebuddy/mcp.json`.
 
 **Important:** Replace `YOUR_*_HERE` placeholders with your actual API keys.
 

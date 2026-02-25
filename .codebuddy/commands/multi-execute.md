@@ -1,6 +1,6 @@
-# Execute - Multi-Model Collaborative Execution
+# Execute - Multi-Agent Collaborative Execution
 
-Multi-model collaborative execution - Get prototype from plan â†?Claude refactors and implements â†?Multi-model audit and delivery.
+Multi-agent collaborative execution - Plan analysis éˆ«?Implementation éˆ«?Code review and delivery.
 
 $ARGUMENTS
 
@@ -8,97 +8,40 @@ $ARGUMENTS
 
 ## Core Protocols
 
-- **Language Protocol**: Use **English** when interacting with tools/models, communicate with user in their language
-- **Code Sovereignty**: External models have **zero filesystem write access**, all modifications by Claude
-- **Dirty Prototype Refactoring**: Treat Codex/Gemini Unified Diff as "dirty prototype", must refactor to production-grade code
+- **Language Protocol**: Use **English** when interacting with tools/agents, communicate with user in their language
+- **Code Sovereignty**: This command orchestrates implementation and code review using local agents
 - **Stop-Loss Mechanism**: Do not proceed to next phase until current phase output is validated
-- **Prerequisite**: Only execute after user explicitly replies "Y" to `/ccg:plan` output (if missing, must confirm first)
+- **Prerequisite**: Only execute after user explicitly confirms plan approval
 
 ---
 
-## Multi-Model Call Specification
+## Local Agent Call Specification
 
-**Call Syntax** (parallel: use `run_in_background: true`):
+**Call Syntax**:
 
 ```
-# Resume session call (recommended) - Implementation Prototype
-Bash({
-  command: "~/.codebuddy/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--backend <codex|gemini> {{GEMINI_MODEL_FLAG}}resume <SESSION_ID> - \"$PWD\" <<'EOF'
-ROLE_FILE: <role prompt path>
-<TASK>
-Requirement: <task description>
-Context: <plan content + target files>
-</TASK>
-OUTPUT: Unified Diff Patch ONLY. Strictly prohibit any actual modifications.
-EOF",
-  run_in_background: true,
-  timeout: 3600000,
-  description: "Brief description"
-})
-
-# New session call - Implementation Prototype
-Bash({
-  command: "~/.codebuddy/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--backend <codex|gemini> {{GEMINI_MODEL_FLAG}}- \"$PWD\" <<'EOF'
-ROLE_FILE: <role prompt path>
-<TASK>
-Requirement: <task description>
-Context: <plan content + target files>
-</TASK>
-OUTPUT: Unified Diff Patch ONLY. Strictly prohibit any actual modifications.
-EOF",
-  run_in_background: true,
-  timeout: 3600000,
-  description: "Brief description"
+Task({
+  subagent_name: "<agent-name>",
+  description: "<brief description>",
+  prompt: "<task prompt with plan, context, and requirements>"
 })
 ```
 
-**Audit Call Syntax** (Code Review / Audit):
+**Available Agents**:
 
-```
-Bash({
-  command: "~/.codebuddy/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--backend <codex|gemini> {{GEMINI_MODEL_FLAG}}resume <SESSION_ID> - \"$PWD\" <<'EOF'
-ROLE_FILE: <role prompt path>
-<TASK>
-Scope: Audit the final code changes.
-Inputs:
-- The applied patch (git diff / final unified diff)
-- The touched files (relevant excerpts if needed)
-Constraints:
-- Do NOT modify any files.
-- Do NOT output tool commands that assume filesystem access.
-</TASK>
-OUTPUT:
-1) A prioritized list of issues (severity, file, rationale)
-2) Concrete fixes; if code changes are needed, include a Unified Diff Patch in a fenced code block.
-EOF",
-  run_in_background: true,
-  timeout: 3600000,
-  description: "Brief description"
-})
-```
+| Phase | Backend | Frontend | General |
+|-------|---------|----------|---------|
+| Analysis | `backend-analyzer` | `frontend-analyzer` | `requirements-analyzer` |
+| Planning | `architect` | `architect` | `planner` |
+| Implementation | - | - | - |
+| Review | `code-reviewer` | `code-reviewer` | `code-reviewer` |
 
-**Model Parameter Notes**:
-- `{{GEMINI_MODEL_FLAG}}`: When using `--backend gemini`, replace with `--gemini-model gemini-3-pro-preview` (note trailing space); use empty string for codex
-
-**Role Prompts**:
-
-| Phase | Codex | Gemini |
-|-------|-------|--------|
-| Implementation | `~/.codebuddy/.ccg/prompts/codex/architect.md` | `~/.codebuddy/.ccg/prompts/gemini/frontend.md` |
-| Review | `~/.codebuddy/.ccg/prompts/codex/reviewer.md` | `~/.codebuddy/.ccg/prompts/gemini/reviewer.md` |
-
-**Session Reuse**: If `/ccg:plan` provided SESSION_ID, use `resume <SESSION_ID>` to reuse context.
-
-**Wait for Background Tasks** (max timeout 600000ms = 10 minutes):
-
-```
-TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
-```
-
-**IMPORTANT**:
-- Must specify `timeout: 600000`, otherwise default 30 seconds will cause premature timeout
-- If still incomplete after 10 minutes, continue polling with `TaskOutput`, **NEVER kill the process**
-- If waiting is skipped due to timeout, **MUST call `AskUserQuestion` to ask user whether to continue waiting or kill task**
+**Agent Focus**:
+- `backend-analyzer`: Technical feasibility, architecture impact, performance considerations
+- `frontend-analyzer`: UI/UX impact, user experience, visual design, accessibility
+- `architect`: System architecture, design patterns, scalability
+- `code-reviewer`: Code quality, security, performance, maintainability
+- `planner`: Step-by-step implementation planning
 
 ---
 
@@ -116,151 +59,180 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 
 2. **Read Plan Content**:
    - If plan file path provided, read and parse
-   - Extract: task type, implementation steps, key files, SESSION_ID
+   - Extract: task type, implementation steps, key files
 
 3. **Pre-Execution Confirmation**:
-   - If input is "direct task description" or plan missing `SESSION_ID` / key files: confirm with user first
-   - If cannot confirm user replied "Y" to plan: must confirm again before proceeding
+   - If input is "direct task description": confirm with user first
+   - If cannot confirm user approved plan: must confirm again
 
 4. **Task Type Routing**:
 
    | Task Type | Detection | Route |
    |-----------|-----------|-------|
-   | **Frontend** | Pages, components, UI, styles, layout | Gemini |
-   | **Backend** | API, interfaces, database, logic, algorithms | Codex |
-   | **Fullstack** | Contains both frontend and backend | Codex âˆ?Gemini parallel |
+   | **Frontend** | Pages, components, UI, styles, layout | Frontend-focused |
+   | **Backend** | API, interfaces, database, logic, algorithms | Backend-focused |
+   | **Fullstack** | Contains both frontend and backend | Both agents |
 
 ---
 
-### Phase 1: Quick Context Retrieval
+### Phase 1: Context Retrieval
 
 `[Mode: Retrieval]`
 
-**Must use MCP tool for quick context retrieval, do NOT manually read files one by one**
+**Use Glob + Grep for file discovery**:
 
-Based on "Key Files" list in plan, call `mcp__ace-tool__search_context`:
+1. Use `Glob` to find relevant files:
+   - Target files from plan's "Key Files" table
+   - Configuration files: `package.json`, `*.config.js`
+   - Source files matching patterns
+
+2. Use `Grep` to find key symbols:
+   - Search for relevant function names, class names
+   - Find similar feature implementations
+   - Locate API routes, database schemas
+
+3. Use `Read` to gather complete context:
+   - Read full file contents for key files
+   - Extract relevant code snippets
+   - Understand existing patterns
+
+**IMPORTANT**:
+- Build search queries based on plan content
+- **NEVER** use Bash + find/ls to manually explore
+- Prioritize: entry file + line number + key symbol name
+
+---
+
+### Phase 2: Analysis and Planning
+
+`[Mode: Analysis]`
+
+**Based on task type, call appropriate agents**:
+
+#### Frontend Task
 
 ```
-mcp__ace-tool__search_context({
-  query: "<semantic query based on plan content, including key files, modules, function names>",
-  project_root_path: "$PWD"
+Task({
+  subagent_name: "frontend-analyzer",
+  description: "Analyze frontend requirements",
+  prompt: "Please analyze the following frontend implementation task:
+
+Plan: <plan content>
+Context: <retrieved context>
+
+Focus on:
+- UI/UX impact
+- Component architecture
+- Accessibility considerations
+- Design consistency
+
+OUTPUT: Detailed analysis and implementation approach."
 })
 ```
 
-**Retrieval Strategy**:
-- Extract target paths from plan's "Key Files" table
-- Build semantic query covering: entry files, dependency modules, related type definitions
-- If results insufficient, add 1-2 recursive retrievals
-- **NEVER** use Bash + find/ls to manually explore project structure
+#### Backend Task
 
-**After Retrieval**:
-- Organize retrieved code snippets
-- Confirm complete context for implementation
-- Proceed to Phase 3
+```
+Task({
+  subagent_name: "backend-analyzer",
+  description: "Analyze backend requirements",
+  prompt: "Please analyze the following backend implementation task:
 
----
+Plan: <plan content>
+Context: <retrieved context>
 
-### Phase 3: Prototype Acquisition
+Focus on:
+- Technical feasibility
+- Architecture impact
+- Performance considerations
+- Security implications
 
-`[Mode: Prototype]`
+OUTPUT: Detailed analysis and implementation approach."
+})
+```
 
-**Route Based on Task Type**:
+#### Fullstack Task
 
-#### Route A: Frontend/UI/Styles â†?Gemini
+**Parallel call** both agents:
+- `frontend-analyzer` for frontend part
+- `backend-analyzer` for backend part
 
-**Limit**: Context < 32k tokens
-
-1. Call Gemini (use `~/.codebuddy/.ccg/prompts/gemini/frontend.md`)
-2. Input: Plan content + retrieved context + target files
-3. OUTPUT: `Unified Diff Patch ONLY. Strictly prohibit any actual modifications.`
-4. **Gemini is frontend design authority, its CSS/React/Vue prototype is the final visual baseline**
-5. **WARNING**: Ignore Gemini's backend logic suggestions
-6. If plan contains `GEMINI_SESSION`: prefer `resume <GEMINI_SESSION>`
-
-#### Route B: Backend/Logic/Algorithms â†?Codex
-
-1. Call Codex (use `~/.codebuddy/.ccg/prompts/codex/architect.md`)
-2. Input: Plan content + retrieved context + target files
-3. OUTPUT: `Unified Diff Patch ONLY. Strictly prohibit any actual modifications.`
-4. **Codex is backend logic authority, leverage its logical reasoning and debug capabilities**
-5. If plan contains `CODEX_SESSION`: prefer `resume <CODEX_SESSION>`
-
-#### Route C: Fullstack â†?Parallel Calls
-
-1. **Parallel Calls** (`run_in_background: true`):
-   - Gemini: Handle frontend part
-   - Codex: Handle backend part
-2. Wait for both models' complete results with `TaskOutput`
-3. Each uses corresponding `SESSION_ID` from plan for `resume` (create new session if missing)
-
-**Follow the `IMPORTANT` instructions in `Multi-Model Call Specification` above**
+Wait for both agents' complete results.
 
 ---
 
-### Phase 4: Code Implementation
+### Phase 3: Implementation
 
 `[Mode: Implement]`
 
-**Claude as Code Sovereign executes the following steps**:
+**Claude executes the following steps**:
 
-1. **Read Diff**: Parse Unified Diff Patch returned by Codex/Gemini
+1. **Plan Execution**:
+   - Follow implementation steps from plan
+   - Use agent analysis as guidance
+   - Apply changes in logical order
 
-2. **Mental Sandbox**:
-   - Simulate applying Diff to target files
-   - Check logical consistency
-   - Identify potential conflicts or side effects
+2. **Code Quality**:
+   - Write clean, maintainable, enterprise-grade code
+   - Follow project's existing code standards
+   - Ensure proper error handling
+   - Add necessary type safety
 
-3. **Refactor and Clean**:
-   - Refactor "dirty prototype" to **highly readable, maintainable, enterprise-grade code**
-   - Remove redundant code
-   - Ensure compliance with project's existing code standards
-   - **Do not generate comments/docs unless necessary**, code should be self-explanatory
-
-4. **Minimal Scope**:
+3. **Minimal Scope**:
    - Changes limited to requirement scope only
-   - **Mandatory review** for side effects
+   - Review for side effects
    - Make targeted corrections
 
-5. **Apply Changes**:
-   - Use Edit/Write tools to execute actual modifications
-   - **Only modify necessary code**, never affect user's other existing functionality
+4. **Apply Changes**:
+   - Use Edit/Write tools to execute modifications
+   - Only modify necessary code
+   - Never affect existing functionality
 
-6. **Self-Verification** (strongly recommended):
-   - Run project's existing lint / typecheck / tests (prioritize minimal related scope)
-   - If failed: fix regressions first, then proceed to Phase 5
+5. **Self-Verification** (strongly recommended):
+   - Run project's existing lint / typecheck / tests
+   - If failed: fix regressions before proceeding
 
 ---
 
-### Phase 5: Audit and Delivery
+### Phase 4: Code Review
 
-`[Mode: Audit]`
+`[Mode: Review]`
 
-#### 5.1 Automatic Audit
+**After changes take effect, MUST call** `code-reviewer` agent:
 
-**After changes take effect, MUST immediately parallel call** Codex and Gemini for Code Review:
+```
+Task({
+  subagent_name: "code-reviewer",
+  description: "Review implemented changes",
+  prompt: "Please review the following code changes:
 
-1. **Codex Review** (`run_in_background: true`):
-   - ROLE_FILE: `~/.codebuddy/.ccg/prompts/codex/reviewer.md`
-   - Input: Changed Diff + target files
-   - Focus: Security, performance, error handling, logic correctness
+Plan: <plan content>
+Changed Files: <list of modified files>
+Changes: <git diff or summary>
 
-2. **Gemini Review** (`run_in_background: true`):
-   - ROLE_FILE: `~/.codebuddy/.ccg/prompts/gemini/reviewer.md`
-   - Input: Changed Diff + target files
-   - Focus: Accessibility, design consistency, user experience
+Focus on:
+- Code quality and maintainability
+- Security vulnerabilities
+- Performance issues
+- Edge cases and error handling
+- Compliance with best practices
 
-Wait for both models' complete review results with `TaskOutput`. Prefer reusing Phase 3 sessions (`resume <SESSION_ID>`) for context consistency.
+OUTPUT:
+1. Summary of findings
+2. List of issues (if any) with severity
+3. Specific recommendations for fixes"
+})
+```
 
-#### 5.2 Integrate and Fix
+#### 4.1 Integrate and Fix
 
-1. Synthesize Codex + Gemini review feedback
-2. Weigh by trust rules: Backend follows Codex, Frontend follows Gemini
-3. Execute necessary fixes
-4. Repeat Phase 5.1 as needed (until risk is acceptable)
+1. Review feedback from code-reviewer
+2. Execute necessary fixes for critical issues
+3. Repeat Phase 4 if needed (until quality is acceptable)
 
-#### 5.3 Delivery Confirmation
+#### 4.2 Delivery Confirmation
 
-After audit passes, report to user:
+After review passes, report to user:
 
 ```markdown
 ## Execution Complete
@@ -270,9 +242,8 @@ After audit passes, report to user:
 |------|-----------|-------------|
 | path/to/file.ts | Modified | Description |
 
-### Audit Results
-- Codex: <Passed/Found N issues>
-- Gemini: <Passed/Found N issues>
+### Review Results
+- Code Review: <Passed/Found N issues>
 
 ### Recommendations
 1. [ ] <Suggested test steps>
@@ -283,11 +254,11 @@ After audit passes, report to user:
 
 ## Key Rules
 
-1. **Code Sovereignty** â€?All file modifications by Claude, external models have zero write access
-2. **Dirty Prototype Refactoring** â€?Codex/Gemini output treated as draft, must refactor
-3. **Trust Rules** â€?Backend follows Codex, Frontend follows Gemini
-4. **Minimal Changes** â€?Only modify necessary code, no side effects
-5. **Mandatory Audit** â€?Must perform multi-model Code Review after changes
+1. **Plan-Driven** â€” Follow plan steps, use agents for guidance
+2. **Code Quality** â€” Write clean, maintainable, enterprise-grade code
+3. **Minimal Changes** â€” Only modify necessary code, no side effects
+4. **Mandatory Review** â€” Must perform code review after changes
+5. **Trust Rules** â€” Backend follows backend-analyzer, Frontend follows frontend-analyzer
 
 ---
 
@@ -295,16 +266,16 @@ After audit passes, report to user:
 
 ```bash
 # Execute plan file
-/ccg:execute .codebuddy/plan/feature-name.md
+/execute .codebuddy/plan/feature-name.md
 
-# Execute task directly (for plans already discussed in context)
-/ccg:execute implement user authentication based on previous plan
+# Execute task directly
+/execute implement user authentication
 ```
 
 ---
 
-## Relationship with /ccg:plan
+## Relationship with /plan
 
-1. `/ccg:plan` generates plan + SESSION_ID
-2. User confirms with "Y"
-3. `/ccg:execute` reads plan, reuses SESSION_ID, executes implementation
+1. `/plan` generates detailed plan
+2. User confirms approval
+3. `/execute` reads plan and implements

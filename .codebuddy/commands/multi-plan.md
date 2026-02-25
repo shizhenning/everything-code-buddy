@@ -1,6 +1,6 @@
 # Plan - Multi-Model Collaborative Planning
 
-Multi-model collaborative planning - Context retrieval + Dual-model analysis â†?Generate step-by-step implementation plan.
+Multi-model collaborative planning - Context retrieval + Dual-model analysis éˆ«?Generate step-by-step implementation plan.
 
 $ARGUMENTS
 
@@ -8,56 +8,42 @@ $ARGUMENTS
 
 ## Core Protocols
 
-- **Language Protocol**: Use **English** when interacting with tools/models, communicate with user in their language
-- **Mandatory Parallel**: Codex/Gemini calls MUST use `run_in_background: true` (including single model calls, to avoid blocking main thread)
-- **Code Sovereignty**: External models have **zero filesystem write access**, all modifications by Claude
+- **Language Protocol**: Use **English** when interacting with tools/agents, communicate with user in their language
+- **Mandatory Parallel**: Agent calls MUST use parallel Task tool calls to avoid blocking main thread
+- **Code Sovereignty**: This command only generates plans, all modifications by implementation commands
 - **Stop-Loss Mechanism**: Do not proceed to next phase until current phase output is validated
 - **Planning Only**: This command allows reading context and writing to `.codebuddy/plan/*` plan files, but **NEVER modify production code**
 
 ---
 
-## Multi-Model Call Specification
+## Local Agent Call Specification
 
-**Call Syntax** (parallel: use `run_in_background: true`):
+**Call Syntax** (parallel: use Task tool):
 
 ```
-Bash({
-  command: "~/.codebuddy/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--backend <codex|gemini> {{GEMINI_MODEL_FLAG}}- \"$PWD\" <<'EOF'
-ROLE_FILE: <role prompt path>
-<TASK>
-Requirement: <enhanced requirement>
-Context: <retrieved project context>
-</TASK>
-OUTPUT: Step-by-step implementation plan with pseudo-code. DO NOT modify any files.
-EOF",
-  run_in_background: true,
-  timeout: 3600000,
-  description: "Brief description"
+Task({
+  subagent_name: "<agent-name>",
+  description: "<brief description>",
+  prompt: "<task prompt with requirement and context>"
 })
 ```
 
-**Model Parameter Notes**:
-- `{{GEMINI_MODEL_FLAG}}`: When using `--backend gemini`, replace with `--gemini-model gemini-3-pro-preview` (note trailing space); use empty string for codex
+**Available Agents**:
 
-**Role Prompts**:
+| Phase | Backend | Frontend | General |
+|-------|---------|----------|---------|
+| Analysis | `backend-analyzer` | `frontend-analyzer` | `requirements-analyzer` |
+| Planning | `architect` | `architect` | `planner` |
 
-| Phase | Codex | Gemini |
-|-------|-------|--------|
-| Analysis | `~/.codebuddy/.ccg/prompts/codex/analyzer.md` | `~/.codebuddy/.ccg/prompts/gemini/analyzer.md` |
-| Planning | `~/.codebuddy/.ccg/prompts/codex/architect.md` | `~/.codebuddy/.ccg/prompts/gemini/architect.md` |
+**Agent Focus**:
+- `backend-analyzer`: Technical feasibility, architecture impact, performance considerations, potential risks
+- `frontend-analyzer`: UI/UX impact, user experience, visual design, accessibility
+- `architect`: System architecture, design patterns, scalability, technical solutions
+- `planner`: Step-by-step implementation planning, task breakdown
 
-**Session Reuse**: Each call returns `SESSION_ID: xxx` (typically output by wrapper), **MUST save** for subsequent `/ccg:execute` use.
+**Wait for Agent Tasks**:
 
-**Wait for Background Tasks** (max timeout 600000ms = 10 minutes):
-
-```
-TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
-```
-
-**IMPORTANT**:
-- Must specify `timeout: 600000`, otherwise default 30 seconds will cause premature timeout
-- If still incomplete after 10 minutes, continue polling with `TaskOutput`, **NEVER kill the process**
-- If waiting is skipped due to timeout, **MUST call `AskUserQuestion` to ask user whether to continue waiting or kill task**
+Task tool calls are synchronous by default. For multiple parallel agent calls, invoke all Task calls in the same message batch.
 
 ---
 
@@ -71,32 +57,59 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 
 #### 1.1 Prompt Enhancement (MUST execute first)
 
-**MUST call `mcp__ace-tool__enhance_prompt` tool**:
+**MUST call `prompt-enhancer` agent**:
 
 ```
-mcp__ace-tool__enhance_prompt({
-  prompt: "$ARGUMENTS",
-  conversation_history: "<last 5-10 conversation turns>",
-  project_root_path: "$PWD"
+Task({
+  subagent_name: "prompt-enhancer",
+  description: "Enhance user requirement",
+  prompt: "Original requirement: $ARGUMENTS
+
+Please enhance this requirement by:
+1. Extracting the core intent and identifying missing details
+2. Gathering project context using Glob + Grep to find:
+   - Similar features and implementations
+   - Existing patterns and conventions
+   - Configuration files, API routes, components
+3. Filling in missing technical details (frameworks, database, APIs, UI/UX, error handling, testing, performance, security)
+4. Structuring the enhanced requirement according to the output template
+
+Return the enhanced requirement in the format specified in your prompt-enhancer agent definition."
 })
 ```
 
 Wait for enhanced prompt, **replace original $ARGUMENTS with enhanced result** for all subsequent phases.
 
+**Fallback**: If prompt-enhancer agent unavailable, use simple enhancement:
+1. Extract key terms and entities from $ARGUMENTS
+2. Use Glob + Grep to find similar implementations and patterns
+3. Add basic context (project type, tech stack from package.json)
+4. Structure into: Overview, Context, Requirements, Success Criteria
+
 #### 1.2 Context Retrieval
 
-**Call `mcp__ace-tool__search_context` tool**:
+**Use Glob + Grep for file discovery**:
 
-```
-mcp__ace-tool__search_context({
-  query: "<semantic query based on enhanced requirement>",
-  project_root_path: "$PWD"
-})
-```
+1. Use `Glob` to find relevant files:
+   - Configuration files: `package.json`, `*.config.js`, `.env.*`
+   - Source files matching patterns: `src/**/*`, `components/**/*`, `api/**/*`
+   - Test files: `tests/**/*`, `**/*.test.js`
 
-- Build semantic query using natural language (Where/What/How)
+2. Use `Grep` to find key symbols and patterns:
+   - Search for relevant function names, class names
+   - Find similar feature implementations
+   - Locate API routes, database schemas, component definitions
+
+3. Use `Read` to gather complete context:
+   - Read full file contents for key files
+   - Extract relevant code snippets
+   - Understand existing patterns and conventions
+
+**IMPORTANT**:
+- Build search queries based on the enhanced requirement
 - **NEVER answer based on assumptions**
-- If MCP unavailable: fallback to Glob + Grep for file discovery and key symbol location
+- Prioritize: entry file + line number + key symbol name
+- Add minimal code snippets only when necessary to resolve ambiguity
 
 #### 1.3 Completeness Check
 
@@ -115,21 +128,55 @@ mcp__ace-tool__search_context({
 
 #### 2.1 Distribute Inputs
 
-**Parallel call** Codex and Gemini (`run_in_background: true`):
+**Parallel call** local agents (using `Task` tool):
 
-Distribute **original requirement** (without preset opinions) to both models:
+Distribute **enhanced requirement** (from Phase 1.1) to both agents:
 
-1. **Codex Backend Analysis**:
-   - ROLE_FILE: `~/.codebuddy/.ccg/prompts/codex/analyzer.md`
-   - Focus: Technical feasibility, architecture impact, performance considerations, potential risks
-   - OUTPUT: Multi-perspective solutions + pros/cons analysis
+1. **Backend Analysis**:
+   ```
+   Task({
+     subagent_name: "backend-analyzer",
+     description: "Analyze backend requirements",
+     prompt: "Please analyze the following requirement from a backend perspective:
 
-2. **Gemini Frontend Analysis**:
-   - ROLE_FILE: `~/.codebuddy/.ccg/prompts/gemini/analyzer.md`
-   - Focus: UI/UX impact, user experience, visual design
-   - OUTPUT: Multi-perspective solutions + pros/cons analysis
+   Requirement: <enhanced requirement>
+   Context: <retrieved project context>
 
-Wait for both models' complete results with `TaskOutput`. **Save SESSION_ID** (`CODEX_SESSION` and `GEMINI_SESSION`).
+   Focus on:
+   - Technical feasibility
+   - Architecture impact
+   - Performance considerations
+   - Potential risks
+   - API design (if applicable)
+   - Database implications (if applicable)
+
+   OUTPUT: Multi-perspective solutions + pros/cons analysis"
+   })
+   ```
+
+2. **Frontend Analysis**:
+   ```
+   Task({
+     subagent_name: "frontend-analyzer",
+     description: "Analyze frontend requirements",
+     prompt: "Please analyze the following requirement from a frontend perspective:
+
+   Requirement: <enhanced requirement>
+   Context: <retrieved project context>
+
+   Focus on:
+   - UI/UX impact
+   - User experience
+   - Visual design
+   - Accessibility considerations
+   - Responsive design
+   - Component architecture
+
+   OUTPUT: Multi-perspective solutions + pros/cons analysis"
+   })
+   ```
+
+Wait for both agents' complete results.
 
 #### 2.2 Cross-Validation
 
@@ -137,22 +184,58 @@ Integrate perspectives and iterate for optimization:
 
 1. **Identify consensus** (strong signal)
 2. **Identify divergence** (needs weighing)
-3. **Complementary strengths**: Backend logic follows Codex, Frontend design follows Gemini
+3. **Complementary strengths**: Backend logic follows backend-analyzer, Frontend design follows frontend-analyzer
 4. **Logical reasoning**: Eliminate logical gaps in solutions
 
-#### 2.3 (Optional but Recommended) Dual-Model Plan Draft
+#### 2.3 (Optional but Recommended) Dual-Agent Plan Draft
 
-To reduce risk of omissions in Claude's synthesized plan, can parallel have both models output "plan drafts" (still **NOT allowed** to modify files):
+To reduce risk of omissions in Claude's synthesized plan, can parallel have both agents output "plan drafts" (still **NOT allowed** to modify files):
 
-1. **Codex Plan Draft** (Backend authority):
-   - ROLE_FILE: `~/.codebuddy/.ccg/prompts/codex/architect.md`
-   - OUTPUT: Step-by-step plan + pseudo-code (focus: data flow/edge cases/error handling/test strategy)
+1. **Backend Plan Draft**:
+   ```
+   Task({
+     subagent_name: "architect",
+     description: "Draft backend implementation plan",
+     prompt: "Please draft a step-by-step backend implementation plan for:
 
-2. **Gemini Plan Draft** (Frontend authority):
-   - ROLE_FILE: `~/.codebuddy/.ccg/prompts/gemini/architect.md`
-   - OUTPUT: Step-by-step plan + pseudo-code (focus: information architecture/interaction/accessibility/visual consistency)
+   Requirement: <enhanced requirement>
+   Context: <retrieved project context>
+   Backend Analysis: <result from 2.1>
 
-Wait for both models' complete results with `TaskOutput`, record key differences in their suggestions.
+   Focus on:
+   - Data flow and architecture
+   - Edge cases and error handling
+   - Test strategy
+   - Security considerations
+   - Performance optimization
+
+   OUTPUT: Step-by-step plan with pseudo-code. DO NOT modify any files."
+   })
+   ```
+
+2. **Frontend Plan Draft**:
+   ```
+   Task({
+     subagent_name: "architect",
+     description: "Draft frontend implementation plan",
+     prompt: "Please draft a step-by-step frontend implementation plan for:
+
+   Requirement: <enhanced requirement>
+   Context: <retrieved project context>
+   Frontend Analysis: <result from 2.1>
+
+   Focus on:
+   - Information architecture
+   - User interaction flows
+   - Accessibility
+   - Visual consistency
+   - Responsive design
+
+   OUTPUT: Step-by-step plan with pseudo-code. DO NOT modify any files."
+   })
+   ```
+
+Wait for both agents' complete results, record key differences in their suggestions.
 
 #### 2.4 Generate Implementation Plan (Claude Final Version)
 
@@ -162,12 +245,12 @@ Synthesize both analyses, generate **Step-by-step Implementation Plan**:
 ## Implementation Plan: <Task Name>
 
 ### Task Type
-- [ ] Frontend (â†?Gemini)
-- [ ] Backend (â†?Codex)
-- [ ] Fullstack (â†?Parallel)
+- [ ] Frontend (â†’ Frontend-focused agents)
+- [ ] Backend (â†’ Backend-focused agents)
+- [ ] Fullstack (â†’ Both agents)
 
 ### Technical Solution
-<Optimal solution synthesized from Codex + Gemini analysis>
+<Optimal solution synthesized from Backend + Frontend agent analysis>
 
 ### Implementation Steps
 1. <Step 1> - Expected deliverable
@@ -182,10 +265,6 @@ Synthesize both analyses, generate **Step-by-step Implementation Plan**:
 ### Risks and Mitigation
 | Risk | Mitigation |
 |------|------------|
-
-### SESSION_ID (for /ccg:execute use)
-- CODEX_SESSION: <session_id>
-- GEMINI_SESSION: <session_id>
 ```
 
 ### Phase 2 End: Plan Delivery (Not Execution)
@@ -204,7 +283,7 @@ Synthesize both analyses, generate **Step-by-step Implementation Plan**:
    - **Execute plan**: Copy the following command to a new session
 
    ```
-   /ccg:execute .codebuddy/plan/actual-feature-name.md
+   /plan .codebuddy/plan/actual-feature-name.md
    ```
    ---
 
@@ -213,10 +292,10 @@ Synthesize both analyses, generate **Step-by-step Implementation Plan**:
 4. **Immediately terminate current response** (Stop here. No more tool calls.)
 
 **ABSOLUTELY FORBIDDEN**:
-- Ask user "Y/N" then auto-execute (execution is `/ccg:execute`'s responsibility)
+- Ask user "Y/N" then auto-execute (execution is separate command's responsibility)
 - Any write operations to production code
-- Automatically call `/ccg:execute` or any implementation actions
-- Continue triggering model calls when user hasn't explicitly requested modifications
+- Automatically call execution commands or any implementation actions
+- Continue triggering agent calls when user hasn't explicitly requested modifications
 
 ---
 
@@ -254,8 +333,8 @@ After user approves, **manually** execute:
 
 ## Key Rules
 
-1. **Plan only, no implementation** â€?This command does not execute any code changes
-2. **No Y/N prompts** â€?Only present plan, let user decide next steps
-3. **Trust Rules** â€?Backend follows Codex, Frontend follows Gemini
-4. External models have **zero filesystem write access**
-5. **SESSION_ID Handoff** â€?Plan must include `CODEX_SESSION` / `GEMINI_SESSION` at end (for `/ccg:execute resume <SESSION_ID>` use)
+1. **Plan only, no implementation** â€” This command does not execute any code changes
+2. **No Y/N prompts** â€” Only present plan, let user decide next steps
+3. **Trust Rules** â€” Backend logic follows backend-analyzer, Frontend design follows frontend-analyzer
+4. This command only generates plans, all modifications by implementation commands
+5. Use local agents only - no external model dependencies

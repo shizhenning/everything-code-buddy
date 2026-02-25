@@ -1,8 +1,8 @@
-# Workflow - Multi-Model Collaborative Development
+# Workflow - Multi-Agent Collaborative Development
 
-Multi-model collaborative development workflow (Research �?Ideation �?Plan �?Execute �?Optimize �?Review), with intelligent routing: Frontend �?Gemini, Backend �?Codex.
+Multi-agent collaborative development workflow (Research 鈫?Ideation 鈫?Plan 鈫?Execute 鈫?Optimize 鈫?Review), with intelligent routing: Frontend 鈫?Frontend-focused agents, Backend 鈫?Backend-focused agents.
 
-Structured development workflow with quality gates, MCP services, and multi-model collaboration.
+Structured development workflow with quality gates and multi-agent collaboration.
 
 ## Usage
 
@@ -14,170 +14,420 @@ Structured development workflow with quality gates, MCP services, and multi-mode
 
 - Task to develop: $ARGUMENTS
 - Structured 6-phase workflow with quality gates
-- Multi-model collaboration: Codex (backend) + Gemini (frontend) + Claude (orchestration)
-- MCP service integration (ace-tool) for enhanced capabilities
+- Multi-agent collaboration: Backend-analyzer + Frontend-analyzer + Architect + Code-reviewer + Claude (orchestration)
 
 ## Your Role
 
-You are the **Orchestrator**, coordinating a multi-model collaborative system (Research �?Ideation �?Plan �?Execute �?Optimize �?Review). Communicate concisely and professionally for experienced developers.
+You are **Orchestrator**, coordinating a multi-agent collaborative system (Research 鈫?Ideation 鈫?Plan 鈫?Execute 鈫?Optimize 鈫?Review). Communicate concisely and professionally for experienced developers.
 
-**Collaborative Models**:
-- **ace-tool MCP** �?Code retrieval + Prompt enhancement
-- **Codex** �?Backend logic, algorithms, debugging (**Backend authority, trustworthy**)
-- **Gemini** �?Frontend UI/UX, visual design (**Frontend expert, backend opinions for reference only**)
-- **Claude (self)** �?Orchestration, planning, execution, delivery
+**Collaborative Agents**:
+- **Frontend-analyzer** — Frontend UI/UX, visual design, accessibility (**Frontend expert**)
+- **Backend-analyzer** — Backend logic, algorithms, debugging (**Backend authority**)
+- **Architect** — System architecture, design patterns, scalability
+- **Code-reviewer** — Code quality, security, performance
+- **Claude (self)** — Orchestration, planning, execution, delivery
 
 ---
 
-## Multi-Model Call Specification
+## Local Agent Call Specification
 
-**Call syntax** (parallel: `run_in_background: true`, sequential: `false`):
+**Call Syntax**:
 
 ```
-# New session call
-Bash({
-  command: "~/.codebuddy/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--backend <codex|gemini> {{GEMINI_MODEL_FLAG}}- \"$PWD\" <<'EOF'
-ROLE_FILE: <role prompt path>
-<TASK>
-Requirement: <enhanced requirement (or $ARGUMENTS if not enhanced)>
-Context: <project context and analysis from previous phases>
-</TASK>
-OUTPUT: Expected output format
-EOF",
-  run_in_background: true,
-  timeout: 3600000,
-  description: "Brief description"
-})
-
-# Resume session call
-Bash({
-  command: "~/.codebuddy/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--backend <codex|gemini> {{GEMINI_MODEL_FLAG}}resume <SESSION_ID> - \"$PWD\" <<'EOF'
-ROLE_FILE: <role prompt path>
-<TASK>
-Requirement: <enhanced requirement (or $ARGUMENTS if not enhanced)>
-Context: <project context and analysis from previous phases>
-</TASK>
-OUTPUT: Expected output format
-EOF",
-  run_in_background: true,
-  timeout: 3600000,
-  description: "Brief description"
+Task({
+  subagent_name: "<agent-name>",
+  description: "<brief description>",
+  prompt: "<task prompt with requirement and context>"
 })
 ```
 
-**Model Parameter Notes**:
-- `{{GEMINI_MODEL_FLAG}}`: When using `--backend gemini`, replace with `--gemini-model gemini-3-pro-preview` (note trailing space); use empty string for codex
+**Available Agents**:
 
-**Role Prompts**:
+| Phase | Backend | Frontend | General |
+|-------|---------|----------|---------|
+| Analysis | `backend-analyzer` | `frontend-analyzer` | `requirements-analyzer` |
+| Planning | `architect` | `architect` | `planner` |
+| Review | `code-reviewer` | `code-reviewer` | `code-reviewer` |
 
-| Phase | Codex | Gemini |
-|-------|-------|--------|
-| Analysis | `~/.codebuddy/.ccg/prompts/codex/analyzer.md` | `~/.codebuddy/.ccg/prompts/gemini/analyzer.md` |
-| Planning | `~/.codebuddy/.ccg/prompts/codex/architect.md` | `~/.codebuddy/.ccg/prompts/gemini/architect.md` |
-| Review | `~/.codebuddy/.ccg/prompts/codex/reviewer.md` | `~/.codebuddy/.ccg/prompts/gemini/reviewer.md` |
+**Agent Focus**:
+- `backend-analyzer`: Technical feasibility, architecture impact, performance, security
+- `frontend-analyzer`: UI/UX, visual design, accessibility, component architecture
+- `architect`: System architecture, design patterns, scalability, technical solutions
+- `code-reviewer`: Code quality, security, performance, maintainability
+- `planner`: Step-by-step implementation planning, task breakdown
 
-**Session Reuse**: Each call returns `SESSION_ID: xxx`, use `resume xxx` subcommand for subsequent phases (note: `resume`, not `--resume`).
-
-**Parallel Calls**: Use `run_in_background: true` to start, wait for results with `TaskOutput`. **Must wait for all models to return before proceeding to next phase**.
-
-**Wait for Background Tasks** (use max timeout 600000ms = 10 minutes):
-
-```
-TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
-```
-
-**IMPORTANT**:
-- Must specify `timeout: 600000`, otherwise default 30 seconds will cause premature timeout.
-- If still incomplete after 10 minutes, continue polling with `TaskOutput`, **NEVER kill the process**.
-- If waiting is skipped due to timeout, **MUST call `AskUserQuestion` to ask user whether to continue waiting or kill task. Never kill directly.**
+**Parallel Calls**: Use parallel Task calls for efficiency. Wait for all agents to return before proceeding.
 
 ---
 
 ## Communication Guidelines
 
 1. Start responses with mode label `[Mode: X]`, initial is `[Mode: Research]`.
-2. Follow strict sequence: `Research �?Ideation �?Plan �?Execute �?Optimize �?Review`.
+2. Follow strict sequence: `Research 鈫?Ideation 鈫?Plan 鈫?Execute 鈫?Optimize 鈫?Review`.
 3. Request user confirmation after each phase completion.
-4. Force stop when score < 7 or user does not approve.
-5. Use `AskUserQuestion` tool for user interaction when needed (e.g., confirmation/selection/approval).
 
 ---
 
-## Execution Workflow
+## Workflow Phases
 
-**Task Description**: $ARGUMENTS
+### Phase 1: Research
 
-### Phase 1: Research & Analysis
+`[Mode: Research]`
 
-`[Mode: Research]` - Understand requirements and gather context:
+**Objective**: Gather comprehensive project context and understand requirements.
 
-1. **Prompt Enhancement**: Call `mcp__ace-tool__enhance_prompt`, **replace original $ARGUMENTS with enhanced result for all subsequent Codex/Gemini calls**
-2. **Context Retrieval**: Call `mcp__ace-tool__search_context`
-3. **Requirement Completeness Score** (0-10):
-   - Goal clarity (0-3), Expected outcome (0-3), Scope boundaries (0-2), Constraints (0-2)
-   - �?: Continue | <7: Stop, ask clarifying questions
+#### 1.1 Prompt Enhancement
 
-### Phase 2: Solution Ideation
+Call `prompt-enhancer` agent to enhance the user requirement:
 
-`[Mode: Ideation]` - Multi-model parallel analysis:
+```
+Task({
+  subagent_name: "prompt-enhancer",
+  description: "Enhance user requirement",
+  prompt: "Original requirement: $ARGUMENTS
 
-**Parallel Calls** (`run_in_background: true`):
-- Codex: Use analyzer prompt, output technical feasibility, solutions, risks
-- Gemini: Use analyzer prompt, output UI feasibility, solutions, UX evaluation
+Please enhance this requirement by:
+1. Extracting core intent and identifying missing details
+2. Gathering project context using Glob + Grep
+3. Filling in missing technical details
+4. Structuring the enhanced requirement
 
-Wait for results with `TaskOutput`. **Save SESSION_ID** (`CODEX_SESSION` and `GEMINI_SESSION`).
+Return the enhanced requirement in the specified format."
+})
+```
 
-**Follow the `IMPORTANT` instructions in `Multi-Model Call Specification` above**
+#### 1.2 Context Retrieval
 
-Synthesize both analyses, output solution comparison (at least 2 options), wait for user selection.
+Use Glob + Grep to gather project context:
+- Configuration files, source files, test files
+- Similar implementations and patterns
+- API routes, components, database schemas
 
-### Phase 3: Detailed Planning
+#### 1.3 Completeness Check
 
-`[Mode: Plan]` - Multi-model collaborative planning:
+Verify context completeness:
+- Obtain complete definitions and signatures
+- Trigger recursive retrieval if needed
+- Ensure no assumptions are made
 
-**Parallel Calls** (resume session with `resume <SESSION_ID>`):
-- Codex: Use architect prompt + `resume $CODEX_SESSION`, output backend architecture
-- Gemini: Use architect prompt + `resume $GEMINI_SESSION`, output frontend architecture
+#### 1.4 Summary
 
-Wait for results with `TaskOutput`.
-
-**Follow the `IMPORTANT` instructions in `Multi-Model Call Specification` above**
-
-**Claude Synthesis**: Adopt Codex backend plan + Gemini frontend plan, save to `.codebuddy/plan/task-name.md` after user approval.
-
-### Phase 4: Implementation
-
-`[Mode: Execute]` - Code development:
-
-- Strictly follow approved plan
-- Follow existing project code standards
-- Request feedback at key milestones
-
-### Phase 5: Code Optimization
-
-`[Mode: Optimize]` - Multi-model parallel review:
-
-**Parallel Calls**:
-- Codex: Use reviewer prompt, focus on security, performance, error handling
-- Gemini: Use reviewer prompt, focus on accessibility, design consistency
-
-Wait for results with `TaskOutput`. Integrate review feedback, execute optimization after user confirmation.
-
-**Follow the `IMPORTANT` instructions in `Multi-Model Call Specification` above**
-
-### Phase 6: Quality Review
-
-`[Mode: Review]` - Final evaluation:
-
-- Check completion against plan
-- Run tests to verify functionality
-- Report issues and recommendations
-- Request final user confirmation
+Present research summary and ask for confirmation:
+- Enhanced requirement
+- Key findings from context
+- Identified risks or uncertainties
 
 ---
 
-## Key Rules
+### Phase 2: Ideation
 
-1. Phase sequence cannot be skipped (unless user explicitly instructs)
-2. External models have **zero filesystem write access**, all modifications by Claude
-3. **Force stop** when score < 7 or user does not approve
+`[Mode: Ideation]`
+
+**Objective**: Generate and explore multiple solution approaches.
+
+#### 2.1 Parallel Agent Analysis
+
+**Call both agents in parallel**:
+
+1. **Backend Analysis**:
+   ```
+   Task({
+     subagent_name: "backend-analyzer",
+     description: "Explore backend solutions",
+     prompt: "Explore backend implementation approaches for:
+
+   Enhanced Requirement: <enhanced requirement>
+   Context: <retrieved context>
+
+   Provide:
+   - Multiple solution approaches
+   - Technical pros/cons for each
+   - Performance implications
+   - Security considerations
+
+   OUTPUT: Detailed analysis with multiple options."
+   })
+   ```
+
+2. **Frontend Analysis**:
+   ```
+   Task({
+     subagent_name: "frontend-analyzer",
+     description: "Explore frontend solutions",
+     prompt: "Explore frontend implementation approaches for:
+
+   Enhanced Requirement: <enhanced requirement>
+   Context: <retrieved context>
+
+   Provide:
+   - Multiple UI/UX approaches
+   - Design pros/cons for each
+   - Accessibility considerations
+   - User experience implications
+
+   OUTPUT: Detailed analysis with multiple options."
+   })
+   ```
+
+Wait for both agents' complete results.
+
+#### 2.2 Solution Synthesis
+
+Synthesize agent outputs:
+- Identify consensus points
+- Highlight divergent approaches
+- Combine strengths from both
+- Propose optimal solution
+
+#### 2.3 User Confirmation
+
+Present solution options and ask for selection:
+- Option A: <description>
+- Option B: <description>
+- Option C: <description>
+
+---
+
+### Phase 3: Plan
+
+`[Mode: Plan]`
+
+**Objective**: Create detailed implementation plan.
+
+#### 3.1 Planning Agent
+
+Call `architect` agent for detailed planning:
+
+```
+Task({
+  subagent_name: "architect",
+  description: "Create implementation plan",
+  prompt: "Create detailed implementation plan for:
+
+Enhanced Requirement: <enhanced requirement>
+Selected Solution: <chosen option from Phase 2>
+Context: <retrieved context>
+
+Provide:
+- Step-by-step implementation plan
+- Technical architecture
+- Risk assessment
+- Testing strategy
+
+OUTPUT: Complete implementation plan."
+})
+```
+
+#### 3.2 Plan Refinement
+
+Refine plan based on:
+- Project constraints
+- Team capabilities
+- Timeline requirements
+
+#### 3.3 Plan Presentation
+
+Present final plan:
+- Implementation steps
+- Key files to modify
+- Estimated complexity
+- Risk mitigation
+
+Ask for approval before proceeding.
+
+---
+
+### Phase 4: Execute
+
+`[Mode: Execute]`
+
+**Objective**: Implement the solution.
+
+#### 4.1 Implementation
+
+Follow plan steps:
+1. Set up necessary infrastructure
+2. Implement core functionality
+3. Add error handling
+4. Write tests
+5. Update documentation
+
+#### 4.2 Code Quality
+
+Ensure:
+- Clean, maintainable code
+- Follows project standards
+- Proper error handling
+- Type safety
+
+#### 4.3 Self-Verification
+
+Run:
+- Lint checks
+- Type checking
+- Unit tests
+- Integration tests
+
+Fix any issues found.
+
+---
+
+### Phase 5: Optimize
+
+`[Mode: Optimize]`
+
+**Objective**: Review and optimize the implementation.
+
+#### 5.1 Code Review
+
+Call `code-reviewer` agent:
+
+```
+Task({
+  subagent_name: "code-reviewer",
+  description: "Review implemented code",
+  prompt: "Review the following implementation:
+
+Enhanced Requirement: <enhanced requirement>
+Implementation Plan: <plan>
+Modified Files: <list>
+Changes: <git diff>
+
+Focus on:
+- Code quality and maintainability
+- Security vulnerabilities
+- Performance issues
+- Edge cases and error handling
+
+OUTPUT: Review findings and recommendations."
+})
+```
+
+#### 5.2 Optimization
+
+Implement optimizations:
+- Performance improvements
+- Code refactoring
+- Better error messages
+- Enhanced test coverage
+
+#### 5.3 Verification
+
+Re-run tests to ensure optimizations don't break functionality.
+
+---
+
+### Phase 6: Review
+
+`[Mode: Review]`
+
+**Objective**: Final quality check and delivery.
+
+#### 6.1 Final Review Checklist
+
+- [ ] All requirements met
+- [ ] Tests passing
+- [ ] Code reviewed
+- [ ] Documentation updated
+- [ ] No regressions
+
+#### 6.2 Delivery Report
+
+Present final report:
+
+```markdown
+## Development Complete
+
+### Summary
+- Task: <original requirement>
+- Solution: <chosen approach>
+- Files Modified: <list>
+
+### Changes
+| File | Operation | Description |
+|------|-----------|-------------|
+
+### Test Results
+- Unit Tests: <passing/total>
+- Integration Tests: <passing/total>
+
+### Next Steps
+1. [ ] Manual testing
+2. [ ] User acceptance
+3. [ ] Deployment preparation
+```
+
+---
+
+## Quality Gates
+
+Each phase has a quality gate:
+
+| Phase | Gate Criteria |
+|-------|-------------|
+| Research | Context sufficient, requirement clear |
+| Ideation | Multiple viable solutions explored |
+| Plan | Detailed plan approved by user |
+| Execute | All tests passing, no regressions |
+| Optimize | Code review passed, performance acceptable |
+| Review | All quality checks passed |
+
+---
+
+## Trust Rules
+
+- **Backend**: Follow `backend-analyzer` recommendations for architecture and logic
+- **Frontend**: Follow `frontend-analyzer` recommendations for UI/UX and design
+- **Architecture**: Follow `architect` recommendations for system design
+- **Code Quality**: Follow `code-reviewer` recommendations for improvements
+
+---
+
+## Key Principles
+
+1. **Phased Approach** — Complete each phase before moving to next
+2. **User Confirmation** — Request approval at key decision points
+3. **Quality Focus** — Never compromise on code quality
+4. **Test-Driven** — Write tests alongside implementation
+5. **Documentation** — Keep documentation up to date
+
+---
+
+## Example Flow
+
+```
+User: /workflow add dark mode to my app
+
+Phase 1: Research
+  ├─ Enhance requirement with prompt-enhancer
+  ├─ Gather context with Glob + Grep
+  └─ Present summary
+
+User: Confirm
+
+Phase 2: Ideation
+  ├─ Backend analysis: LocalStorage vs Cookie vs Database
+  ├─ Frontend analysis: CSS variables vs class toggling vs theme context
+  └─ Present 3 solution options
+
+User: Select Option B
+
+Phase 3: Plan
+  ├─ Create implementation plan with architect
+  └─ Present detailed plan
+
+User: Approve
+
+Phase 4: Execute
+  ├─ Implement theme provider
+  ├─ Add toggle component
+  ├─ Update styles
+  └─ Write tests
+
+Phase 5: Optimize
+  ├─ Code review with code-reviewer
+  └─ Apply optimizations
+
+Phase 6: Review
+  └─ Present delivery report
+```
