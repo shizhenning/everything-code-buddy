@@ -42,3 +42,7 @@ examples/sessions/*.tmp
 marketing/
 
 plan/
+
+# Quality assessment files (local state)
+.codebuddy/quality-status.json
+.codebuddy/quality-bypass-log.json

@@ -2,6 +2,9 @@
   "qualityGate": {
     "enabled": true,
     "mode": "manual",
+    "strict": false,
+    "blockBypass": false,
+    "maxRetries": 3,
     "description": "Quality assessment configuration for multi-execute",
     "rules": [
       {

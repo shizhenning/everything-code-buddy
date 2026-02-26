@@ -520,47 +520,210 @@ Generate quality report:
 - [ ] <action 2>
 ```
 
-#### 4.5.5: Quality Decision (Auto Mode Only)
+#### 4.5.5: Quality Decision & Execution Control (Auto Mode Only)
+
+**CRITICAL: This is a GATE - execution must be BLOCKED if not passed**
 
 Based on quality score and critical issues:
 
-| Score Range | Decision | Action |
-|-------------|----------|--------|
-| 90-100 | ✅ Pass | Continue to Phase 4.2 |
-| 80-89 | ✅ Pass | Continue to Phase 4.2 |
-| 70-79 | ⚠️ Conditional | Continue to Phase 4.2 (with recommendations) |
-| 60-69 | ⚠️ Require Fix | Stop execution, request fixes |
-| <60 | ❌ Fail | Stop execution, require fixes and re-assess |
+| Score Range | Decision | Action | canProceed |
+|-------------|----------|--------|------------|
+| 90-100 | ✅ Pass | Continue to Phase 4.2 | true |
+| 80-89 | ✅ Pass | Continue to Phase 4.2 | true |
+| 70-79 | ⚠️ Conditional | Continue to Phase 4.2 (with warnings) | true |
+| 60-69 | ⚠️ Require Fix | **STOP EXECUTION** | false |
+| <60 | ❌ Fail | **STOP EXECUTION** | false |
 
 **Critical Issues Veto**:
-Reject immediately if any critical issue exists:
+**REJECT IMMEDIATELY** if any critical issue exists:
 - 🔴 Security vulnerabilities
 - 🔴 Missing functionality
 - 🔴 Severe performance issues
 - 🔴 Type errors
 - 🔴 Breaking changes
 
-**If decision is "Pass" or "Conditional"**:
-- Proceed to Phase 4.2 (Delivery Confirmation)
-- Include quality report in delivery summary
+**IMPORTANT: When execution is STOPPED**:
 
-**If decision is "Require Fix" or "Fail"**:
-- Stop execution and report:
-```markdown
-## 质量评估未通过
-
-### 问题摘要
-<summary of issues>
-
-### 必须修复
-<list of required fixes>
-
-### 修复后重新评估
-用户可以运行:
-/execute <plan-file> --retry
-
-或修复问题后继续执行。
+1. **Write quality status file** (blocking state):
+```bash
+# Generate .codebuddy/quality-status.json
+{
+  "status": "Require Fix",  // or "Fail"
+  "score": <score>,
+  "timestamp": "<current ISO timestamp>",
+  "planFile": "<plan file path>",
+  "canProceed": false
+}
 ```
+
+2. **Update quality-trends.json** with failed assessment record:
+```json
+{
+  "assessments": [
+    {
+      "timestamp": "<ISO timestamp>",
+      "plan": "<plan file path>",
+      "overallScore": <score>,
+      "overallStatus": "Require Fix",
+      "canProceed": false,
+      "executionBlocked": true
+    }
+  ]
+}
+```
+
+3. **Generate BLOCKING report** and stop execution:
+```markdown
+## 🛑 质量评估未通过 - 执行已终止
+
+### 综合评分
+**<score>/100** ⚠️
+
+### 阻止原因
+<reason for blocking: score range or critical issue>
+
+### 必须修复的问题
+1. [ ] <critical issue 1>
+2. [ ] <critical issue 2>
+...
+
+### 下一步行动
+
+**选项 A: 修复后重新评估**（推荐）
+```bash
+# 修复问题后运行
+/execute .codebuddy/plan/<plan-name>.md --retry
+```
+
+**选项 B: 手动质量评估**
+```bash
+/quality-assess .codebuddy/plan/<plan-name>.md
+```
+
+**选项 C: 强制执行**（仅紧急情况，不推荐）
+```bash
+/execute .codebuddy/plan/<plan-name>.md --force
+```
+⚠️ **警告**: --force 标志会跳过质量门禁检查，可能导致代码质量问题。
+
+---
+
+**执行已终止**
+质量门禁已阻止执行。请修复问题后重新运行。
+```
+
+4. **DO NOT** (CRITICAL - execution must stop):
+- ❌ Proceed to Phase 4.2 (Delivery Confirmation)
+- ❌ Show delivery summary
+- ❌ Generate deployment artifacts
+- ❌ Allow user to continue to next step
+
+5. **End execution**:
+- Show blocking report above
+- Wait for user to fix issues and run with `--retry` or `--force`
+- Session ends without proceeding to Phase 4.2
+
+---
+
+**If decision is "Pass" or "Conditional"**:
+
+1. **Write quality status file** (allow state):
+```bash
+# Generate .codebuddy/quality-status.json
+{
+  "status": "Pass",  // or "Pass (Conditional)"
+  "score": <score>,
+  "timestamp": "<current ISO timestamp>",
+  "planFile": "<plan file path>",
+  "canProceed": true
+}
+```
+
+2. **Update quality-trends.json** with passed assessment record
+
+3. **Proceed to Phase 4.2** (Delivery Confirmation)
+- Include quality report in delivery summary
+- Add quality badge: `✅ Quality Assessment Passed (<score>/100)`
+
+---
+
+#### 4.5.6: Command Line Flags (Emergency Override)
+
+**Flag Processing Logic**:
+
+Check user input for special flags before executing Phase 4.5:
+
+```
+IF user_input.includes("--force") THEN
+    IF qualityGate.mode === "auto" OR qualityGate.mode === "manual" THEN
+        IF qualityGate.blockBypass !== true THEN
+            # Request explicit confirmation
+            Prompt user:
+            "⚠️  WARNING: You are about to BYPASS the quality gate!
+
+            This may introduce:
+            - Security vulnerabilities
+            - Code quality issues
+            - Test coverage gaps
+            - Integration problems
+
+            Current quality score: <score>/100
+            Status: <status>
+
+            Confirm bypass? [y/N]"
+
+            IF user_confirms THEN
+                # Log security event
+                Append to .codebuddy/quality-bypass-log.json:
+                {
+                  "timestamp": "<ISO timestamp>",
+                  "plan": "<plan file path>",
+                  "reason": "<user provided reason>",
+                  "approvedBy": "<admin>",
+                  "riskLevel": "high",
+                  "originalScore": <score>,
+                  "originalStatus": "<status>"
+                }
+
+                # Skip Phase 4.5 quality assessment
+                Log: "Quality gate bypassed by user"
+
+                # Proceed to Phase 4.1 (Code Review) and Phase 4.2
+                Add warning badge: "⚠️ Quality gate bypassed (emergency use)"
+            ELSE
+                Exit
+            END IF
+        ELSE
+            Error: "--force is disabled in strict mode. Set qualityGate.blockBypass to false to enable."
+            Exit
+        END IF
+    ELSE
+        # qualityGate.mode === "off", proceed normally
+        Skip Phase 4.5
+    END IF
+END IF
+
+IF user_input.includes("--retry") THEN
+    # Force re-run quality assessment
+    Log: "Re-running quality assessment (retry mode)"
+    Execute Phase 4.5.2 - 4.5.4
+    Update quality-status.json
+    Continue to Phase 4.5.5 decision
+END IF
+
+IF user_input.includes("--no-quality") THEN
+    IF qualityGate.mode === "off" THEN
+        Skip Phase 4.5 entirely
+        Log: "Quality assessment disabled (--no-quality)"
+        Proceed to Phase 4.1
+    ELSE
+        Error: "--no-quality only works when qualityGate.mode is 'off'"
+        Exit
+    END IF
+END IF
+```
+
+**Note**: Flags are processed at the beginning of Phase 4.5, before quality assessment runs.
 
 ---
 

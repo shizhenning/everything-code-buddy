@@ -1,11 +1,7 @@
 {
-  "masterPlan": "gold-miner-master.md",
-  "status": "in_progress",
-  "executionMode": "sequential",
-  "currentSubPlan": "P1",
-  "completedSubPlans": [],
-  "pendingSubPlans": ["P2", "P3", "P4", "P5", "P6"],
-  "failedSubPlans": [],
-  "startTime": "2026-02-26T10:00:00Z",
-  "lastUpdate": "2026-02-26T10:05:00Z"
+  "current_plan": "P3",
+  "completed_plans": ["P1", "P2"],
+  "status": "completed",
+  "last_updated": "2026-02-26T00:00:00Z",
+  "notes": "P3 已完成，实现了核心 API 和物理验证服务，修复了审查报告中的 CRITICAL 问题"
 }

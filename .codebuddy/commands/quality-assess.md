@@ -21,6 +21,96 @@ $ARGUMENTS
 
 ---
 
+### Phase 0: Initialization Check (NEW)
+
+`[Mode: Check]`
+
+**Check if quality gate is initialized**:
+
+1. **Check Configuration Files**:
+
+```bash
+# Check if quality configuration exists
+if [ ! -f ".codebuddy/quality-config.json" ]; then
+    echo "❌ Quality gate not initialized"
+    echo ""
+    echo "To initialize quality gate for this project, run:"
+    echo "  /quality-init"
+    echo ""
+    echo "This will guide you through:"
+    echo "  - Project analysis (language, framework, tools)"
+    echo "  - Quality gate mode selection (auto/manual/off)"
+    echo "  - Strictness level configuration (strict/moderate/lenient)"
+    echo "  - Quality standards setup (coverage, complexity, linting)"
+    echo "  - Hook installation (git pre-commit, CodeBuddy hooks)"
+    echo ""
+    echo "After initialization, run /quality-assess again."
+    exit 1
+fi
+
+if [ ! -f ".codebuddy/quality-baseline.json" ]; then
+    echo "⚠️  Quality baseline not found"
+    echo "  Creating default baseline based on project detection..."
+fi
+
+if [ ! -f ".codebuddy/quality-trends.json" ]; then
+    echo "⚠️  Quality trends file not found"
+    echo "  Creating new trends file..."
+fi
+```
+
+2. **Create Missing Files** (if needed):
+
+If baseline or trends files don't exist, create them with defaults:
+
+```json
+// quality-baseline.json (created if not exists)
+{
+  "project": {
+    "name": "<detected from package.json or git config>",
+    "type": "<detected: web/mobile/backend>",
+    "language": "<detected: TypeScript/Python/Java/etc>",
+    "framework": "<detected: React/Vue/Django/etc>"
+  },
+  "qualityStandards": {
+    "functionality": { "targetScore": 100 },
+    "codeQuality": { "targetScore": 100 },
+    "testing": { "targetScore": 100 },
+    "linting": { "targetScore": 100 },
+    "security": { "targetScore": 100 }
+  },
+  "createdAt": "<current timestamp>",
+  "version": "1.0"
+}
+
+// quality-trends.json (created if not exists)
+{
+  "assessments": [],
+  "summary": {
+    "totalAssessments": 0,
+    "averageScore": 0
+  },
+  "metadata": {
+    "version": "1.0",
+    "createdAt": "<current timestamp>"
+  }
+}
+```
+
+3. **Load Configuration**:
+
+Read `.codebuddy/quality-config.json`:
+- Quality gate mode (auto/manual/off)
+- Quality standards
+- Tool support
+- Rules
+
+**If mode is "off"**:
+- Skip all checks
+- Return early with message: "Quality gate disabled"
+
+---
+
 ### Phase 1: Load Execution Context
 
 `[Mode: Prepare]`
@@ -30,17 +120,17 @@ $ARGUMENTS
    - Extract: task type, requirements, implementation steps, key files
 
 2. **Load Quality Baseline**:
-   - Check if `.codebuddy/quality-baseline.json` exists
-   - If exists, read and parse quality standards
-   - If not exists, use default standards
+   - Read `.codebuddy/quality-baseline.json` (created in Phase 0 if not exists)
+   - Parse quality standards
+   - Use as baseline for comparison
 
 3. **Get Changed Files**:
    - Use `git diff` to get list of changed files
    - If git not available, use plan's "Key Files" section
    - Collect file contents for analysis
 
-4. **Load Quality Trends** (if exists):
-   - Read `.codebuddy/quality-trends.json`
+4. **Load Quality Trends**:
+   - Read `.codebuddy/quality-trends.json` (created in Phase 0 if not exists)
    - Calculate historical average scores
    - Prepare for trend comparison
 
