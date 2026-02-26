@@ -57,7 +57,22 @@ Task tool calls are synchronous by default. For multiple parallel agent calls, i
 
 #### 1.1 Prompt Enhancement (MUST execute first)
 
-**MUST call `prompt-enhancer` agent**:
+`[Mode: Prepare]`
+
+**Step 1: Identify Input Type**
+
+First, analyze the input to determine the requirement type:
+
+| Input Type | Pattern | Processing Strategy |
+|------------|---------|-------------------|
+| **Brief** | Simple text (<500 words) | Standard enhancement via prompt-enhancer |
+| **Document** | File path (.md/.docx/.pdf) OR large text (>2000 words) | Document parsing + requirement extraction |
+| **Structured** | Document with chapters/sections | Document structuring + module splitting |
+
+**Step 2: Call Appropriate Enhancement Strategy**
+
+**If inputType === "brief" or "unstructured"**:
+- Call `prompt-enhancer` agent with standard enhancement (existing logic):
 
 ```
 Task({
@@ -78,7 +93,46 @@ Return the enhanced requirement in the format specified in your prompt-enhancer 
 })
 ```
 
-Wait for enhanced prompt, **replace original $ARGUMENTS with enhanced result** for all subsequent phases.
+**If inputType === "document" or "structured"**:
+- Call `prompt-enhancer` agent with special instructions for document parsing:
+
+```
+Task({
+  subagent_name: "prompt-enhancer",
+  description: "Parse and enhance large requirement document",
+  prompt: "Original requirement document: $ARGUMENTS
+
+Please identify this is a large requirement document and execute the following:
+
+1. **Parse Document Structure** - Identify chapters, modules, and features
+2. **Extract Core Requirements** - Functional, technical, and non-functional requirements
+3. **Group Requirements** - By modules, priority (P0/P1/P2), and tech stack
+4. **Identify Dependencies** - Dependencies between features
+5. **Generate Summary** - Overall overview, module list, key requirements
+
+OUTPUT must include these additional sections:
+
+## Document Analysis
+- Document Type: <PRD/FDD/User Story>
+- Module Count: <N>
+- Estimated Scope: <Small/Medium/Large>
+
+## Functional Modules
+1. <Module 1>: <Brief description>
+2. <Module 2>: <Brief description>
+...
+
+## Dependency Graph
+<Module dependency relationship diagram>"
+})
+```
+
+**Step 3: Process Enhanced Output**
+
+- If output contains **Functional Modules** sections, mark as "potential split needed"
+- Pass this information to Phase 2.5 (Plan Scale Assessment) for reference
+
+Wait for enhanced output, **replace original $ARGUMENTS with enhanced result** for all subsequent phases.
 
 **Fallback**: If prompt-enhancer agent unavailable, use simple enhancement:
 1. Extract key terms and entities from $ARGUMENTS
@@ -239,7 +293,21 @@ Wait for both agents' complete results, record key differences in their suggesti
 
 #### 2.5 Plan Scale Assessment (NEW)
 
-Before finalizing the plan, assess whether the plan is too large and needs splitting:
+**Enhanced Assessment with Document Analysis** (when available):
+
+If Phase 1.1 identified the input as a large document and returned **Functional Modules**:
+
+1. **Use Document Analysis Results**:
+   - Check if Document Analysis indicates **"Recommended Split: Yes"**
+   - Review the **Module Count** from document analysis
+   - Examine the **Dependency Graph** for natural split points
+
+2. **Document-Based Decision**:
+   - Large documents (>2000 words, Module Count > 3) → **Recommend split**
+   - Use functional modules as natural split boundaries
+   - Dependency graph provides execution order
+
+**Standard Scale Assessment** (when no document analysis):
 
 **Evaluation Criteria**:
 
@@ -272,6 +340,19 @@ When plan scale assessment indicates splitting is needed:
 ##### 2.6.1 Choose Splitting Strategy
 
 Analyze the plan characteristics and choose the most appropriate strategy:
+
+**If Document Analysis Available (from Phase 1.1)**:
+
+Prioritize using document's **Functional Modules** and **Dependency Graph**:
+
+| Strategy | When to Use | Key Indicator |
+|----------|-------------|---------------|
+| **By Functional Module** | Document provides module list | Use Functional Modules directly |
+| **By Document Structure** | Document has clear chapters | Align with document chapters |
+| **By Dependency Graph** | Document provides dependencies | Use Dependency Graph for order |
+| **By Priority** | Document indicates priorities | Use P0/P1/P2 from document |
+
+**Standard Strategy Selection (no document analysis)**:
 
 | Strategy | When to Use | Key Indicator |
 |----------|-------------|---------------|
