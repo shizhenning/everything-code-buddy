@@ -176,11 +176,190 @@ Wait for enhanced output, **replace original $ARGUMENTS with enhanced result** f
 - If requirements still have ambiguity, **MUST** output guiding questions for user
 - Until requirement boundaries are clear (no omissions, no redundancy)
 
+#### 1.5 Context Optimization & Compression (NEW)
+
+`[Mode: Optimize]`
+
+**Context Size Estimation**:
+
+1. **Token Estimation Rules**:
+   - English: 1 token ≈ 0.75 words
+   - Chinese: 1 token ≈ 1.5 characters
+   - Code: 1 token ≈ 4 characters
+
+2. **Calculate Total Size**:
+   ```
+   total_tokens = enhanced_requirement_tokens + sum(file_tokens)
+
+   enhanced_requirement_tokens:
+   - Count words/characters in Phase 1.1 output
+
+   file_tokens:
+   - For each file: lines × avg_tokens_per_line
+   - Code: ~10 tokens/line
+   - Markdown: ~15 tokens/line
+   - JSON: ~8 tokens/line
+   ```
+
+3. **Decision Thresholds**:
+   - < 20K tokens: No compression needed (skip to Phase 2)
+   - 20K - 30K tokens: Light compression (summarize files >300 lines)
+   - 30K - 50K tokens: Medium compression + modular routing in Phase 2
+   - > 50K tokens: Aggressive compression + mandatory modular routing in Phase 2
+
+**File Relevance Scoring**:
+
+**Scoring Factors**:
+| Factor | Weight | Example |
+|--------|--------|---------|
+| Keyword match count | 30% | "auth" in authentication feature |
+| Dependency depth | 25% | Direct imports > indirect |
+| File type match | 20% | Component for frontend feature |
+| Recent modification | 10% | git log recency |
+| File size (penalty) | 15% | Smaller files favored |
+
+**Scoring Algorithm**:
+```
+relevance_score = (
+  keyword_match_count × 0.30 +
+  (1 / dependency_depth) × 0.25 +
+  file_type_match × 0.20 +
+  recency_score × 0.10 +
+  (1 / log(file_size)) × 0.15
+)
+
+dependency_depth:
+  1 = directly related (e.g., component for UI feature)
+  2 = one level removed (e.g., utility used by component)
+  3+ = indirect (e.g., base classes, shared utilities)
+```
+
+**Ranking and Classification**:
+- **Critical Priority** (Top 5-10 files): Keep full content
+- **High Priority** (Files 11-20): Summarize key parts
+- **Medium Priority** (Files 21-30): Brief summary only
+- **Low Priority** (Files >30): Reference only (file path + purpose)
+
+**Large File Summarization**:
+
+**Trigger**: Files with >200 lines
+
+**Summarization Template**:
+```markdown
+### File: src/auth/authentication.ts (245 lines → summarized)
+
+**Purpose**: User authentication and session management
+
+**Key Exports**:
+```typescript
+export class AuthenticationService {
+  login(credentials: LoginRequest): Promise<AuthResponse>
+  logout(): Promise<void>
+  refreshSession(): Promise<AuthResponse>
+  validateToken(token: string): boolean
+}
+```
+
+**Dependencies**:
+- `./session-manager.ts` - Session storage
+- `./crypto.ts` - Token generation/validation
+- `@external/jwt` - JWT library
+
+**Key Patterns**:
+- Uses decorator-based permission checking (@RequireAuth)
+- Implements token refresh rotation
+- Centralized error handling
+
+**Relevance to Current Task**: High - Directly implements authentication flow
+```
+
+**Implementation Notes**:
+- Use code-explorer subagent to extract structure
+- Preserve function/class signatures
+- Keep imports/exports for context understanding
+- Highlight patterns relevant to current requirement
+
+**Final Context Structure**:
+
+Output the optimized context in hierarchical format:
+
+```markdown
+## Context Summary
+
+### Phase 1: Enhanced Requirement
+<Full enhanced requirement from Phase 1.1>
+
+### Phase 2: Project Context
+
+#### High Priority Context (Full Content)
+| File | Lines | Purpose |
+|------|-------|---------|
+| src/auth.ts | 120 | Authentication core |
+| components/Login.tsx | 80 | Login UI component |
+
+**Full Content**:
+<Complete file contents for high-priority files>
+
+#### Medium Priority Context (Summarized)
+| File | Original Lines | Summary |
+|------|----------------|---------|
+| src/utils/validation.ts | 250 | [Summarized content] |
+| api/routes.ts | 180 | [Summarized content] |
+
+#### Low Priority Context (Reference)
+| File | Relevance | Note |
+|------|-----------|------|
+| package.json | 70% | Dependencies available on demand |
+| tests/auth.test.ts | 60% | Test patterns can be loaded via code-explorer |
+```
+
+**IMPORTANT**:
+- Replace the original context with this optimized structure
+- Pass this to Phase 2.0 for routing decision
+- Total estimated tokens must be included in summary
+- If total tokens still exceed target, reduce High Priority count (keep top 5-7)
+
 ### Phase 2: Multi-Model Collaborative Analysis
 
 `[Mode: Analysis]`
 
+#### 2.0 Agent Routing Decision (NEW)
+
+`[Mode: Route]`
+
+**Check Context Size from Phase 1.5**:
+
+```
+IF total_context_tokens < 30K THEN
+    → Use Standard Parallel Calls (Phase 2.1 existing logic)
+ELSE IF document_analysis_available AND module_count > 1 THEN
+    → Use Modular Batch Calls (Phase 2.1 Enhanced)
+ELSE
+    → Use Hybrid Calls (Standard + Lazy Loading, Phase 2.1 Alternative)
+END IF
+```
+
+**Execution Strategy Selection Table**:
+
+| Context Size | Document Analysis | Module Count | Strategy |
+|--------------|-------------------|--------------|----------|
+| < 30K tokens | N/A | N/A | Standard Parallel Calls (Phase 2.1) |
+| 30K - 50K tokens | Available | > 1 | Modular Batch Calls (Phase 2.1 Enhanced) |
+| 30K - 50K tokens | Not Available | N/A | Hybrid + Lazy Loading (Phase 2.1 Alternative) |
+| > 50K tokens | Any | N/A | Mandatory Modular Batch Calls (Phase 2.1 Enhanced) |
+
+**IMPORTANT**:
+- Follow the routing decision strictly based on context size
+- Document analysis availability determined in Phase 1.1 (check for "Functional Modules" section)
+- Module count available from Phase 1.1 output
+
 #### 2.1 Distribute Inputs
+
+**Use the strategy selected in Phase 2.0**:
+
+---
+
+**Strategy A: Standard Parallel Calls** (for total_context_tokens < 30K)
 
 **Parallel call** local agents (using `Task` tool):
 
@@ -232,7 +411,165 @@ Distribute **enhanced requirement** (from Phase 1.1) to both agents:
 
 Wait for both agents' complete results.
 
-#### 2.2 Cross-Validation
+---
+
+**Strategy B: Modular Batch Calls** (for total_context_tokens >= 30K + document analysis available)
+
+**FOR EACH functional_module IN document_analysis.modules**:
+
+```
+1. Extract module-specific context:
+   - Module requirements
+   - Related files (from prioritized list in Phase 1.5)
+   - Module dependencies
+
+2. Call agents for this module:
+   PARALLEL(
+     Task({
+       subagent_name: "backend-analyzer",
+       description: "Analyze <module_name> backend requirements",
+       prompt: "Please analyze the following module from a backend perspective:
+
+   Module: <module_name>
+   Description: <module_description>
+   Requirements: <module_requirements>
+   Dependencies: <module_dependencies>
+   Context: <module_specific_context>
+
+   Focus on:
+   - Technical feasibility
+   - Architecture impact
+   - Performance considerations
+   - Potential risks
+   - API design (if applicable)
+   - Database implications (if applicable)
+
+   OUTPUT: Multi-perspective solutions + pros/cons analysis for this module"
+     }),
+     Task({
+       subagent_name: "frontend-analyzer",
+       description: "Analyze <module_name> frontend requirements",
+       prompt: "Please analyze the following module from a frontend perspective:
+
+   Module: <module_name>
+   Description: <module_description>
+   Requirements: <module_requirements>
+   Dependencies: <module_dependencies>
+   Context: <module_specific_context>
+
+   Focus on:
+   - UI/UX impact
+   - User experience
+   - Visual design
+   - Accessibility considerations
+   - Responsive design
+   - Component architecture
+
+   OUTPUT: Multi-perspective solutions + pros/cons analysis for this module"
+     })
+   )
+
+3. Store module analysis result
+END FOR
+```
+
+**Module-Specific Context Extraction Logic**:
+
+```
+function extractModuleContext(module, prioritizedFiles) {
+  const moduleContext = {
+    requirements: module.requirements,
+    dependencies: module.dependencies,
+    files: []
+  };
+
+  // Match files to module based on:
+  // - Keyword similarity (module.name vs file.path)
+  // - Dependency graph (files used by module)
+  // - Relevance score from Phase 1.5
+
+  for (const file of prioritizedFiles) {
+    const relevance = calculateModuleRelevance(module, file);
+    if (relevance > 0.6) {
+      moduleContext.files.push({
+        path: file.path,
+        content: file.content, // Full or summarized based on priority
+        relevance: relevance
+      });
+    }
+  }
+
+  return moduleContext;
+}
+
+calculateModuleRelevance(module, file):
+  - Exact keyword match: +0.8
+  - Partial keyword match: +0.5
+  - File in dependency chain: +0.6
+  - File type match (component for UI, api for backend): +0.4
+  - Adjust by Phase 1.5 relevance score (weighted average)
+```
+
+**Wait for all module analyses** before proceeding to Phase 2.2 Enhanced.
+
+---
+
+**Strategy C: Hybrid + Lazy Loading** (for total_context_tokens >= 30K + no document analysis)
+
+**Initial Agent Call** (with high-priority context only):
+
+```
+Task({
+  subagent_name: "backend-analyzer",
+  description: "Analyze backend requirements",
+  prompt: "Please analyze the following requirement from a backend perspective:
+
+Requirement: <enhanced requirement>
+
+High Priority Context:
+<Full content of high-priority files from Phase 1.5>
+
+Additional Context Available:
+- Medium priority files: N files (summarized)
+- Low priority files: M files (reference only)
+
+If you need more details about specific files, use the code-explorer subagent:
+Task({
+  subagent_name: "code-explorer",
+  description: "Get detailed file context",
+  prompt: "Retrieve full content and analysis for: <file_path>
+   Include: file structure, key functions/classes, dependencies, patterns"
+})
+
+Focus on:
+- Technical feasibility
+- Architecture impact
+- Performance considerations
+- Potential risks
+- API design (if applicable)
+- Database implications (if applicable)
+
+OUTPUT: Multi-perspective solutions + pros/cons analysis"
+})
+```
+
+**Repeat for frontend-analyzer** with same lazy loading pattern.
+
+**Lazy Loading Benefits**:
+- Reduces initial token payload by 40-60%
+- Allows agent to request relevant context on-demand
+- Maintains flexibility for complex scenarios
+
+**IMPORTANT**:
+- Track cumulative tokens across lazy loads
+- Set hard limit: total tokens < 60K
+- If limit reached, summarize lazy-loaded responses
+
+---
+
+#### 2.2 Cross-Validation (Enhanced)
+
+**Standard Cross-Validation** (for Strategy A and C):
 
 Integrate perspectives and iterate for optimization:
 
@@ -241,7 +578,53 @@ Integrate perspectives and iterate for optimization:
 3. **Complementary strengths**: Backend logic follows backend-analyzer, Frontend design follows frontend-analyzer
 4. **Logical reasoning**: Eliminate logical gaps in solutions
 
+**Enhanced Cross-Validation for Modular Batch Calls** (Strategy B):
+
+1. **Cross-Module Consistency Check**:
+   - Identify conflicting solutions between modules
+   - Detect shared dependencies (common patterns, utilities)
+   - Verify dependency graph alignment from Phase 1.1
+
+2. **Integration Points Identification**:
+   - Module A's output → Module B's input
+   - Shared data models
+   - Common UI components
+   - API contracts between modules
+
+3. **Architectural Coherence**:
+   - Ensure consistent tech stack across modules
+   - Validate data flow alignment
+   - Check for overlapping responsibilities
+
+4. **Generate Integrated Analysis**:
+   - Combine module-specific perspectives
+   - Add integration considerations
+   - Optimize execution order using dependency graph
+
+**Output Format for Enhanced Validation**:
+
+```markdown
+## Integrated Analysis
+
+### Module-wise Perspectives
+1. Module A: <backend-analyzer + frontend-analyzer results>
+2. Module B: <backend-analyzer + frontend-analyzer results>
+...
+
+### Cross-Module Integration
+- Shared dependencies: <list>
+- Integration points: <list>
+- Dependency flow: <diagram>
+
+### Architectural Coherence
+✓ Tech stack consistency: <confirmed/needs adjustment>
+✓ Data flow alignment: <confirmed/needs adjustment>
+⚠️ Conflicts to resolve: <list>
+```
+
 #### 2.3 (Optional but Recommended) Dual-Agent Plan Draft
+
+**For Standard Parallel Calls (Strategy A/C)**:
 
 To reduce risk of omissions in Claude's synthesized plan, can parallel have both agents output "plan drafts" (still **NOT allowed** to modify files):
 
@@ -290,6 +673,12 @@ To reduce risk of omissions in Claude's synthesized plan, can parallel have both
    ```
 
 Wait for both agents' complete results, record key differences in their suggestions.
+
+**For Modular Batch Calls (Strategy B)**:
+
+Skip this phase - plan drafts are already generated per module in Phase 2.1.
+
+---
 
 #### 2.5 Plan Scale Assessment (NEW)
 

@@ -348,22 +348,218 @@ OUTPUT:
 
 #### 4.2 Delivery Confirmation
 
-After review passes, report to user:
+After review passes, proceed to Phase 4.5 for quality assessment.
+
+---
+
+### Phase 4.5: Quality Assessment (Conditional)
+
+`[Mode: Assess]`
+
+After code review is complete, perform quality assessment based on quality gate configuration.
+
+#### 4.5.0: Check Quality Gate Configuration
+
+Read `.codebuddy/quality-config.json`:
+
+```json
+{
+  "qualityGate": {
+    "enabled": true,
+    "mode": "auto",  // auto | manual | off
+    "rules": [...]
+  }
+}
+```
+
+**If file does not exist**:
+- Use default settings: `enabled: true`, `mode: "auto"`
+- Prompt user: "Quality assessment enabled (auto mode). Create `.codebuddy/quality-config.json` to customize."
+
+#### 4.5.1: Quality Gate Decision Logic
+
+```
+IF qualityGate.enabled !== true OR qualityGate.mode === "off" THEN
+    Skip Phase 4.5
+    Log: "Quality assessment disabled"
+    Proceed to Phase 4.2 (Delivery Confirmation)
+
+ELSE IF qualityGate.mode === "manual" THEN
+    Skip Phase 4.5
+    Output hint:
+    ```markdown
+    ## Quality Assessment Available
+
+    Quality assessment is configured for **manual mode**.
+
+    Run quality assessment after delivery:
+    ```
+    /quality-assess <plan-file>
+    ```
+
+    Proceed to Phase 4.2 (Delivery Confirmation)
+
+ELSE IF qualityGate.mode === "auto" THEN
+    Execute Phase 4.5.2 - 4.5.4 (Quality Assessment)
+END IF
+```
+
+#### 4.5.2: Run Automated Checks (Auto Mode Only)
+
+Execute automated quality checks:
+
+```bash
+# Type checking
+npm run typecheck
+
+# Linting
+npm run lint
+
+# Unit tests with coverage
+npm test -- --coverage
+
+# Build verification
+npm run build
+
+# Security audit (optional)
+npm audit
+```
+
+Collect results:
+- TypeScript errors: `<count>`
+- Lint errors: `<count>`
+- Test coverage: `<percentage>%`
+- Build status: `<status>`
+
+#### 4.5.3: Call code-reviewer for Quality Assessment (Auto Mode Only)
+
+```
+Task({
+  subagent_name: "code-reviewer",
+  description: "Quality assessment",
+  prompt: "Please assess quality of following implementation:
+
+Plan: <plan content>
+Changed Files: <list of files>
+Changes: <git diff or summary>
+
+Quality Standards from Baseline:
+- Functionality: 100% requirement completion rate
+- Code Quality: Max 50 lines/function, complexity ≤ 10
+- Testing: Min 80% coverage, critical paths 100%
+- Linting: 0 errors, max 10 warnings
+
+Auto-Check Results:
+  - TypeScript: <errors> errors, <warnings> warnings
+  - Lint: <errors> errors, <warnings> warnings
+  - Test Coverage: <percentage>%
+  - Build: <status>
+
+Evaluate on 5 dimensions:
+1. Functionality - Are all requirements implemented?
+2. Code Quality - Is code clean, maintainable, performant?
+3. Test Coverage - Is test coverage adequate (≥80%)?
+4. Documentation - Is documentation complete?
+5. Integration - Any regressions?
+
+OUTPUT:
+Quality Score (0-100): <score>
+Critical Issues: <list>
+Recommendations: <list>
+Overall Assessment: <pass/fail/conditional>"
+})
+```
+
+#### 4.5.4: Generate Quality Report (Auto Mode Only)
+
+Generate quality report:
 
 ```markdown
-## Execution Complete
+## 质量评估报告
 
-### Change Summary
-| File | Operation | Description |
-|------|-----------|-------------|
-| path/to/file.ts | Modified | Description |
+### 计划信息
+- 计划名称: <plan name>
+- 计划文件: <plan file>
 
-### Review Results
-- Code Review: <Passed/Found N issues>
+### 综合评分
+**<score>/100** <stars>
 
-### Recommendations
-1. [ ] <Suggested test steps>
-2. [ ] <Suggested verification steps>
+### 分项评分
+
+| 维度 | 评分 | 说明 |
+|------|------|------|
+| 功能完整性 | <score>/100 | <status> |
+| 代码质量 | <score>/100 | <status> |
+| 测试覆盖 | <score>/100 | <status> |
+| 文档完整性 | <score>/100 | <status> |
+| 集成验证 | <score>/100 | <status> |
+
+### 自动化检查结果
+
+| 检查项 | 结果 | 详情 |
+|--------|------|------|
+| TypeScript | <status> | <details> |
+| Lint | <status> | <details> |
+| 测试覆盖率 | <percentage>% | <details> |
+| Build | <status> | <details> |
+
+### 关键问题
+
+| 严重级别 | 问题 | 建议 |
+|----------|------|------|
+| <severity> | <issue> | <recommendation> |
+
+### 最终结论
+
+**状态**: <status>
+
+**是否批准**: <yes/no>
+
+**后续行动**:
+- [ ] <action 1>
+- [ ] <action 2>
+```
+
+#### 4.5.5: Quality Decision (Auto Mode Only)
+
+Based on quality score and critical issues:
+
+| Score Range | Decision | Action |
+|-------------|----------|--------|
+| 90-100 | ✅ Pass | Continue to Phase 4.2 |
+| 80-89 | ✅ Pass | Continue to Phase 4.2 |
+| 70-79 | ⚠️ Conditional | Continue to Phase 4.2 (with recommendations) |
+| 60-69 | ⚠️ Require Fix | Stop execution, request fixes |
+| <60 | ❌ Fail | Stop execution, require fixes and re-assess |
+
+**Critical Issues Veto**:
+Reject immediately if any critical issue exists:
+- 🔴 Security vulnerabilities
+- 🔴 Missing functionality
+- 🔴 Severe performance issues
+- 🔴 Type errors
+- 🔴 Breaking changes
+
+**If decision is "Pass" or "Conditional"**:
+- Proceed to Phase 4.2 (Delivery Confirmation)
+- Include quality report in delivery summary
+
+**If decision is "Require Fix" or "Fail"**:
+- Stop execution and report:
+```markdown
+## 质量评估未通过
+
+### 问题摘要
+<summary of issues>
+
+### 必须修复
+<list of required fixes>
+
+### 修复后重新评估
+用户可以运行:
+/execute <plan-file> --retry
+
+或修复问题后继续执行。
 ```
 
 ---

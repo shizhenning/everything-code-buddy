@@ -1,0 +1,12 @@
+{
+  "executions": [],
+  "trends": {
+    "overall": 0,
+    "functionality": 0,
+    "codeQuality": 0,
+    "testing": 0,
+    "documentation": 0,
+    "integration": 0
+  },
+  "createdAt": "2026-02-26"
+}
