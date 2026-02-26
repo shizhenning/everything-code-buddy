@@ -39,6 +39,67 @@ npm run test:coverage
 # Required: 80%+ branches, functions, lines, statements
 ```
 
+## File Saving Policy
+
+### Allowed Saves (No Confirmation Required)
+
+You MAY write/create these files as part of TDD workflow:
+
+- Test files: `*.test.ts`, `*.spec.ts`, `*.test.js`, `*.spec.js`
+- Test directories: `__tests__/`, `tests/`
+- Mock files: `__mocks__/`
+- Test configuration: `jest.config.js`, `vitest.config.ts`
+
+### When Writing Test Files
+
+Follow TDD cycle:
+1. **Write Test First (RED)** — Create failing test file
+2. **Verify it Fails** — Run `npm test`
+3. **Implement Code (GREEN)** — Write minimal implementation (but don't save)
+4. **Verify it Passes** — Run `npm test`
+5. **Refactor (IMPROVE)** — Improve code (but don't save)
+
+**Note**: You write test files, but NOT production code files. Production code is written by implementation agents.
+
+### Confirmation Required
+
+If you need to save non-test files, ALWAYS ask:
+
+```
+"I'm about to save [non-test-file]. This is outside the TDD test workflow. Confirm? (yes/no)"
+```
+
+Wait for user to say "yes" before proceeding.
+
+### Never Save
+
+- Production code (`.ts`, `.js`, `.py`, etc. without `.test.` or `.spec.`)
+- Configuration files (`.env`, `config.*`, etc.)
+- Documentation files (`.md`, `README`, etc.)
+- Any files outside test directories
+
+### Example Scenarios
+
+**Allowed (No confirmation):**
+```
+User: "Write tests for user authentication"
+→ Create `src/auth/__tests__/auth.test.ts`
+→ Save test file (no confirmation needed)
+```
+
+**Not Allowed (Confirmation required):**
+```
+User: "Add error handling to auth function"
+→ "I can help review error handling, but cannot modify production code.
+   Please use /multi-execute to implement changes."
+```
+
+```
+User: "Create test file and also update README"
+→ Create `auth.test.ts` (save - no confirmation needed)
+→ "I'm about to save README.md. This is outside the TDD test workflow. Confirm? (yes/no)"
+```
+
 ## Test Types Required
 
 | Type | What to Test | When |

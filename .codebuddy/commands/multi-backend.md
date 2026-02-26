@@ -51,7 +51,13 @@ $ARGUMENTS
 
 1. 调用 `database-designer` agent 设计数据库架构
 2. 基于用户选择的方案设计详细 schema
-3. 用户批准后保存设计到 `.codebuddy/plans/backend-{任务名}-db.md`
+3. **询问用户**: "保存设计到 `.codebuddy/plans/backend-{任务名}-db.md`? (yes/no)"
+4. 如果用户回答 "yes":
+   - 保存设计到 `.codebuddy/plans/backend-{任务名}-db.md`
+   - 文件写入完成后呈现给用户
+5. 如果用户回答 "no":
+   - 在终端中呈现设计
+   - 不保存到文件
 
 ```
 请调用 database-designer agent 设计数据库：

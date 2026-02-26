@@ -50,7 +50,13 @@ $ARGUMENTS
 
 1. 调用 `architect` agent 进行前端架构设计
 2. 基于用户选择的方案制定详细计划
-3. 用户批准后保存计划到 `.codebuddy/plans/frontend-{任务名}.md`
+3. **询问用户**: "保存设计到 `.codebuddy/plans/frontend-{任务名}.md`? (yes/no)"
+4. 如果用户回答 "yes":
+   - 保存设计到 `.codebuddy/plans/frontend-{任务名}.md`
+   - 文件写入完成后呈现给用户
+5. 如果用户回答 "no":
+   - 在终端中呈现设计
+   - 不保存到文件
 
 ```
 请调用 architect agent 设计前端架构：

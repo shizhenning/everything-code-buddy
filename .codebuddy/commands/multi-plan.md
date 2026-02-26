@@ -237,7 +237,150 @@ To reduce risk of omissions in Claude's synthesized plan, can parallel have both
 
 Wait for both agents' complete results, record key differences in their suggestions.
 
-#### 2.4 Generate Implementation Plan (Claude Final Version)
+#### 2.5 Plan Scale Assessment (NEW)
+
+Before finalizing the plan, assess whether the plan is too large and needs splitting:
+
+**Evaluation Criteria**:
+
+| Metric | Suggest Split | Force Split |
+|--------|--------------|-------------|
+| Steps | > 7 | > 10 |
+| Files | > 15 | > 20 |
+| Estimated Time | > 4h | > 8h |
+| Functional Modules | Multiple | Multiple |
+| Tech Stacks Involved | Frontend+Backend+DB | Any |
+
+**Decision Logic**:
+
+- **No split needed**: All metrics below "Suggest Split" thresholds
+- **Suggest split**: Any metric reaches "Suggest Split" threshold
+- **Force split**: Any metric reaches "Force Split" threshold
+
+**If splitting is needed**, skip to **Phase 2.6: Plan Splitting**
+
+**If no splitting needed**, proceed to **Phase 2.7: Generate Single Plan**
+
+---
+
+#### 2.6 Plan Splitting (NEW - when triggered)
+
+`[Mode: Split]`
+
+When plan scale assessment indicates splitting is needed:
+
+##### 2.6.1 Choose Splitting Strategy
+
+Analyze the plan characteristics and choose the most appropriate strategy:
+
+| Strategy | When to Use | Key Indicator |
+|----------|-------------|---------------|
+| **By Functional Module** | Multiple independent features | "Implement A, B, C, D" |
+| **By Tech Stack** | Large frontend & backend work | "UI + API" |
+| **By Dependencies** | Features have clear order | "A depends on B" |
+| **By Priority** | Features have different priorities | "Core (P0), Enhancement (P1)" |
+
+##### 2.6.2 Generate Master Plan
+
+Create a master plan file: `.codebuddy/plan/<feature-name>-master.md`
+
+```markdown
+## 总计划：<Feature Name>
+
+### 子计划列表
+
+1. **计划1: <Module 1 Name>** (`<module-1-slug>`)
+   - 优先级: <P0/P1/P2/P3>
+   - 依赖: <none or list>
+   - 预计耗时: <X hours>
+
+2. **计划2: <Module 2 Name>** (`<module-2-slug>`)
+   - 优先级: <P0/P1/P2/P3>
+   - 依赖: <none or list>
+   - 预计耗时: <X hours>
+
+...
+
+### 执行顺序
+<Dependency graph or execution sequence>
+
+### 总耗时
+<Estimated total time (considering parallel execution)>
+```
+
+##### 2.6.3 Generate Sub-Plans
+
+For each sub-plan, generate a detailed plan file:
+
+`.codebuddy/plan/<module-slug>.md`
+
+Each sub-plan must include:
+
+```markdown
+## 子计划：<Module Name>
+
+### 概述
+<Brief description of this module>
+
+### 任务类型
+- [x] Backend / Frontend / Fullstack
+
+### 实施步骤
+1. <Step 1> - Expected deliverable
+2. <Step 2> - Expected deliverable
+...
+
+### 关键文件
+| File | Operation | Description |
+|------|-----------|-------------|
+| path/to/file.ts | Create/Modify | Description |
+
+### 风险和缓解
+| Risk | Mitigation |
+|------|------------|
+
+### 依赖
+<List of dependencies (or "无")>
+
+### 后续依赖
+<List of plans that depend on this one>
+```
+
+**Important Requirements for Sub-Plans**:
+- Each sub-plan should be 3-7 steps
+- Estimated 2-4 hours to complete
+- Must be independently testable
+- Clear dependencies declared
+
+##### 2.6.4 Present Split Plan to User
+
+```markdown
+# 计划拆分完成
+
+## 总览
+原始需求规模较大，已拆分为 <N> 个子计划。
+
+## 总计划文件
+`.codebuddy/plan/<feature-name>-master.md`
+
+## 子计划列表
+<Numbered list of sub-plans with file paths>
+
+## 执行顺序
+<Clear execution sequence with parallel options>
+
+## 下一步
+- **查看总计划**: `/plan .codebuddy/plan/<feature-name>-master.md`
+- **执行子计划1**: `/execute .codebuddy/plan/<module-1-slug>.md`
+```
+
+**Save all plans** before presenting to user.
+
+**Then terminate response** (do not proceed to execution).
+
+---
+
+#### 2.7 Generate Implementation Plan (single plan - when no splitting needed)
 
 Synthesize both analyses, generate **Step-by-step Implementation Plan**:
 
@@ -271,6 +414,8 @@ Synthesize both analyses, generate **Step-by-step Implementation Plan**:
 
 **`/ccg:plan` responsibilities end here, MUST execute the following actions**:
 
+**For Single Plan (no splitting)**:
+
 1. Present complete implementation plan to user (including pseudo-code)
 2. Save plan to `.codebuddy/plan/<feature-name>.md` (extract feature name from requirement, e.g., `user-auth`, `payment-module`)
 3. Output prompt in **bold text** (MUST use actual saved file path):
@@ -289,6 +434,30 @@ Synthesize both analyses, generate **Step-by-step Implementation Plan**:
 
    **NOTE**: The `actual-feature-name.md` above MUST be replaced with the actual saved filename!
 
+**For Split Plan (master + sub-plans)**:
+
+1. Present master plan and sub-plans summary to user
+2. Save master plan to `.codebuddy/plan/<feature-name>-master.md`
+3. Save all sub-plans to `.codebuddy/plan/<module-slug>.md`
+4. Output prompt in **bold text**:
+
+   ---
+   **Plan split and saved. Master plan: `.codebuddy/plan/actual-feature-name-master.md`**
+
+   **Sub-plans generated:**
+   - Plan 1: `.codebuddy/plan/module-1.md`
+   - Plan 2: `.codebuddy/plan/module-2.md`
+   ...
+
+   **Next steps:**
+   - **Review master plan**: Check execution order and dependencies
+   - **Execute sub-plans**: Run in the specified order, or use batch execution
+
+   ```
+   /execute .codebuddy/plan/actual-feature-name-master.md
+   ```
+   ---
+
 4. **Immediately terminate current response** (Stop here. No more tool calls.)
 
 **ABSOLUTELY FORBIDDEN**:
@@ -301,12 +470,17 @@ Synthesize both analyses, generate **Step-by-step Implementation Plan**:
 
 ## Plan Saving
 
-After planning completes, save plan to:
+After planning completes:
 
-- **First planning**: `.codebuddy/plan/<feature-name>.md`
-- **Iteration versions**: `.codebuddy/plan/<feature-name>-v2.md`, `.codebuddy/plan/<feature-name>-v3.md`...
+1. **Ask user**: "Save plan to `.codebuddy/plan/<feature-name>.md`? (yes/no)"
+2. If user says "yes":
+   - Save plan to `.codebuddy/plan/<feature-name>.md`
+   - Plan file write should complete before presenting plan to user
+3. If user says "no":
+   - Present plan to user in terminal only
+   - Do not save to file
 
-Plan file write should complete before presenting plan to user.
+**Note**: This command does NOT execute any code changes, only saves plans.
 
 ---
 

@@ -133,6 +133,29 @@ RECOMMENDATION
 [SHIP / NEEDS WORK / BLOCKED]
 ```
 
+## Report Saving
+
+After orchestration completes:
+
+1. **Determine save location**:
+   - **Architecture reports**: `docs/architecture/<workflow>-<task-slug>.md`
+   - **Other workflows**: `.reports/orchestration-<workflow>-<task-slug>.md`
+
+2. **Ask user**: "保存报告到 [path]? (yes/no)"
+3. If user says "yes":
+   - Save report to specified path
+   - Report file write should complete before presenting to user
+4. If user says "no":
+   - Present report to user in terminal only
+   - Do not save to file
+
+**Note**: This command generates reports only, no code changes.
+
+## Special Cases
+
+- **Architecture Decision Records (ADR)**: Should be saved as `docs/adr-XXX-<title>.md`
+  - Example: `docs/adr-001-use-redis.md`
+
 ## Parallel Execution
 
 For independent checks, run agents in parallel:
