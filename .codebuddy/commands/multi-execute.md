@@ -191,6 +191,46 @@ Task({
 
 ---
 
+### Phase 0.6: OpenSpec Mode Detection (NEW)
+
+`[Mode: Detect]`
+
+如果用户传递 `--openspec <change-name>` 标志:
+
+1. **Set OpenSpec Mode**:
+   ```bash
+   OPENSPEC_MODE=true
+   CHANGE_NAME="<change-name>"
+   ```
+
+2. **Detect OpenSpec Artifacts**:
+   - Check if `openspec/changes/${CHANGE_NAME}/` exists
+   - Verify required artifacts: `proposal.md`, `tasks.md`, `design.md`
+   - Read `.plan-mapping.md` for plan links
+
+3. **Load OpenSpec Context**:
+   - Read `proposal.md` for objectives and scope
+   - Read `design.md` for architecture and technical decisions
+   - Read `tasks.md` for granular task list
+   - Parse task checkboxes to find current state
+
+4. **Validate OpenSpec Linkage** (optional but recommended):
+   - Run `.codebuddy/scripts/validate-plan-links.js` to verify plan-OpenSpec linkage
+   - Check forward/backward references
+   - Verify mapping table consistency
+
+5. **Set Execution Parameters**:
+   ```yaml
+   OPENSPEC_MODE: true
+   CHANGE_PATH: openspec/changes/${CHANGE_NAME}
+   PLAN_PATH: (extracted from proposal metadata)
+   TASKS_FILE: openspec/changes/${CHANGE_NAME}/tasks.md
+   ```
+
+6. **Proceed to Phase 3.5** (OpenSpec-specific execution mode)
+
+---
+
 ### Phase 1: Context Retrieval
 
 `[Mode: Retrieval]`
@@ -277,6 +317,46 @@ Wait for both agents' complete results.
 
 ---
 
+### Phase 1.1: Context Loading (OpenSpec Mode)
+
+`[Mode: Load]`
+
+if [ "$OPENSPEC_MODE" = true ]; then
+  # 1. 解析任务清单
+  TASKS_FILE="$CHANGE_PATH/tasks.md"
+  
+  # 2. 提取未完成任务 (未勾选的 checkbox)
+  PENDING_TASKS=$(grep -E '^\-\s+\[\s\]' "$TASKS_FILE" | head -5)
+  
+  # 3. 提取已完成任务 (已勾选的 checkbox)
+  COMPLETED_TASKS=$(grep -E '^\-\s+\[x\]' "$TASKS_FILE")
+  
+  # 4. 加载相关规格
+  SPECS_DIR="openspec/specs/$CHANGE_NAME"
+  if [ -d "$SPECS_DIR" ]; then
+    SPEC_FILES=$(find "$SPECS_DIR" -name "*.md" -type f)
+  fi
+  
+  # 5. 加载设计文档
+  DESIGN_FILE="$CHANGE_PATH/design.md"
+  
+  # 6. 设置上下文变量
+  CONTEXT_VARS=(
+    "OPENSPEC_MODE=$OPENSPEC_MODE"
+    "CHANGE_NAME=$CHANGE_NAME"
+    "PENDING_TASKS_COUNT=$(echo \"$PENDING_TASKS\" | wc -l)"
+    "COMPLETED_TASKS_COUNT=$(echo \"$COMPLETED_TASKS\" | wc -l)"
+  )
+  
+  echo "✅ OpenSpec context loaded"
+  echo "   Pending tasks: $PENDING_TASKS_COUNT"
+  echo "   Completed tasks: $COMPLETED_TASKS_COUNT"
+  
+  # Proceed to Phase 3.5
+fi
+
+---
+
 ### Phase 3: Implementation
 
 `[Mode: Implement]`
@@ -310,6 +390,79 @@ Wait for both agents' complete results.
 
 ---
 
+#### Phase 3 Enhancement: OpenSpec-Aware Implementation (NEW)
+
+If `OPENSPEC_MODE=true`:
+
+1. **OpenSpec-Guided Implementation**:
+   - Reference `proposal.md` objectives to ensure alignment
+   - Follow `design.md` architecture decisions
+   - Consult `specs/` for detailed requirements
+   - Check `tasks.md` for granular task descriptions
+
+2. **Cross-Reference Compliance**:
+   - For each implementation step, verify it aligns with:
+     - `proposal.md` scope (don't exceed boundaries)
+     - `design.md` technical decisions (use specified patterns)
+     - `specs/` requirements (meet all specifications)
+   - Mark any deviations for review
+
+3. **Progress Tracking**:
+   - Maintain awareness of which tasks from `tasks.md` are being executed
+   - Prepare for Phase 3.5 task status updates
+   - Track completion percentage
+
+4. **Implementation Notes** (for documentation):
+   - Record any deviations from OpenSpec specs
+   - Note any discovered edge cases not covered in specs
+   - Document design decisions made during implementation
+
+---
+
+### Phase 3.5: OpenSpec 任务执行与实时更新 (OpenSpec Mode Only)
+
+`[Mode: Execute & Track]`
+
+if [ "$OPENSPEC_MODE" = true ]; then
+
+1. **读取下一个待执行任务**:
+   ```bash
+   # 从 tasks.md 读取第一个未勾选的任务
+   NEXT_TASK=$(grep -E '^\-\s+\[ \]' "$TASKS_FILE" | head -1)
+   ```
+
+2. **执行任务**:
+   - 根据 tasks.md 中的任务描述执行实现
+   - 遵循 proposal.md 中的目标和范围
+   - 参考 design.md 中的技术决策
+   - 如需要,参考 specs/ 中的详细规格
+
+3. **实时更新任务状态**:
+   - 完成一个任务后,立即更新 tasks.md
+   - 将未完成的 checkbox `[ ]` 改为已完成 `[x]`
+   - 使用 replace_in_file 或 read_file + replace_in_file 组合
+
+4. **重复执行**:
+   - 循环执行步骤 1-3,直到所有任务完成
+   - 建议每次会话完成 1-5 个任务(取决于任务大小)
+   - 在会话结束时生成进度摘要
+
+5. **生成进度报告**:
+   ```
+   ✅ 本次会话完成的任务: N 个
+   📊 总进度: X/Y 个任务已完成 (Z%)
+   ⏭️  下次执行: /multi-execute --openspec ${CHANGE_NAME}
+   ```
+
+6. **可选: 生成一致性报告**:
+   ```bash
+   node .codebuddy/scripts/generate-consistency-report.js ${CHANGE_NAME}
+   ```
+
+fi
+
+---
+
 ### Phase 4: Code Review
 
 `[Mode: Review]`
@@ -340,15 +493,127 @@ OUTPUT:
 })
 ```
 
+#### Phase 4 Enhancement: OpenSpec-Aware Code Review (NEW)
+
+If `OPENSPEC_MODE=true`:
+
+1. **OpenSpec Consistency Check**:
+   - Verify implementation aligns with `proposal.md` objectives
+   - Check adherence to `design.md` architecture decisions
+   - Validate compliance with `specs/` requirements
+   - Confirm all tasks from `tasks.md` are addressed
+
+2. **Cross-Reference Validation**:
+   - Review code against OpenSpec artifacts
+   - Identify any deviations or missing features
+   - Document decisions that diverge from specs
+   - Flag any spec omissions for resolution
+
+3. **Enhanced Code Review Prompt** (include OpenSpec context):
+   ```
+   Task({
+     subagent_name: "code-reviewer",
+     description: "Review implemented changes with OpenSpec context",
+     prompt: "Please review the following code changes:
+
+   Plan: <plan content>
+   Changed Files: <list of modified files>
+   Changes: <git diff or summary>
+
+   OpenSpec Context:
+   - Proposal: <proposal.md objectives>
+   - Design: <design.md architecture>
+   - Specs: <specs/ requirements>
+   - Tasks: <tasks.md completed tasks>
+
+   Focus on:
+   - Code quality and maintainability
+   - Security vulnerabilities
+   - Performance issues
+   - Edge cases and error handling
+   - Compliance with best practices
+   - OpenSpec specification compliance
+   - Completeness against task list
+
+   OUTPUT:
+   1. Summary of findings
+   2. OpenSpec compliance assessment
+   3. List of issues (if any) with severity
+   4. Specific recommendations for fixes
+   5. Any deviations from OpenSpec specs"
+   })
+   ```
+
+4. **Consistency Report Integration**:
+   - After review, generate preliminary consistency report:
+   ```bash
+   node .codebuddy/scripts/generate-consistency-report.js ${CHANGE_NAME} --preliminary
+   ```
+   - Review generated report for any issues
+   - Address inconsistencies before proceeding
+
 #### 4.1 Integrate and Fix
 
 1. Review feedback from code-reviewer
 2. Execute necessary fixes for critical issues
 3. Repeat Phase 4 if needed (until quality is acceptable)
+4. For OpenSpec mode: address any OpenSpec compliance issues
 
 #### 4.2 Delivery Confirmation
 
 After review passes, proceed to Phase 4.5 for quality assessment.
+
+---
+
+### Phase 4.6: OpenSpec 完整性验证 (OpenSpec Mode Only)
+
+`[Mode: Verify & Sync]`
+
+if [ "$OPENSPEC_MODE" = true ]; then
+
+1. **验证计划与实现一致性**:
+   ```bash
+   # 运行验证脚本
+   node .codebuddy/scripts/validate-plan-links.js ${PLAN_PATH}
+   ```
+
+2. **生成一致性报告**:
+   ```bash
+   # 生成详细的一致性报告
+   node .codebuddy/scripts/generate-consistency-report.js ${CHANGE_NAME}
+   ```
+
+3. **检查任务完成度**:
+   - 确认所有 P0 任务已完成
+   - 确认 P1/P2 任务按计划完成
+   - 检查 tasks.md 中 checkbox 状态
+
+4. **验证工件同步**:
+   - 确认 proposal.md 中的目标都已实现
+   - 确认 design.md 中的设计决策都已应用
+   - 确认 specs/ 中的规格都已满足
+
+5. **更新映射表**:
+   - 更新 .plan-mapping.md 中的状态
+   - 记录已完成的工作
+   - 标记任何待决问题
+
+6. **输出验证摘要**:
+   ```
+   ✅ OpenSpec 完整性验证完成
+   ✅ 计划链接验证: 通过
+   ✅ 任务完成度: X/Y (Z%)
+   ✅ 一致性报告: 已生成
+   
+   📄 报告路径:
+   - 一致性报告: openspec/changes/${CHANGE_NAME}/consistency-report.md
+   
+   下一步:
+   - 归档变更: /opsx:archive ${CHANGE_NAME}
+   - 继续完善: /opsx:continue ${CHANGE_NAME}
+   ```
+
+fi
 
 ---
 

@@ -2,7 +2,7 @@
 name: test-analyzer
 description: 测试策略分析专家。分析测试需求，设计测试策略，提供测试工具选型建议。
 tools: ["Read", "Grep", "Glob"]
-model: kimi-k2.5
+model: deepseek-v3.2
 ---
 
 You are an expert test analyst specialized in test strategy design and testing methodology.

@@ -816,6 +816,37 @@ Each sub-plan must include:
 <List of plans that depend on this one>
 ```
 
+##### 2.6.4 OpenSpec Link Validation (NEW - for --openspec mode)
+
+`[Mode: Validate]`
+
+If the `--openspec` flag was provided:
+
+1. **Detect if linking to existing OpenSpec changes**:
+   - Check if any sub-plans link to existing OpenSpec changes
+   - Look for `关联 OpenSpec 变更` references in sub-plans
+
+2. **Validate OpenSpec linkages** (if any found):
+   ```bash
+   # For each sub-plan with OpenSpec linkage:
+   for subplan in .codebuddy/plan/*.md; do
+     if grep -q "关联 OpenSpec 变更" "$subplan"; then
+       node .codebuddy/scripts/validate-plan-links.js "$subplan"
+     fi
+   done
+   ```
+
+3. **Report linkage status**:
+   - List all sub-plans with OpenSpec linkages
+   - Show validation results (pass/fail)
+   - Note any missing or broken links
+
+4. **For new plans without OpenSpec linkages**:
+   - Skip validation
+   - Phase 4.5 will create new OpenSpec changes later
+
+---
+
 **Important Requirements for Sub-Plans**:
 - Each sub-plan should be 3-7 steps
 - Estimated 2-4 hours to complete
@@ -880,6 +911,55 @@ Synthesize both analyses, generate **Step-by-step Implementation Plan**:
 |------|------------|
 ```
 
+#### 2.8 Task Refinement (Enhanced for OpenSpec) (NEW)
+
+`[Mode: Refine]`
+
+**For OpenSpec Mode (--openspec flag)**:
+
+If the `--openspec` flag is provided, task refinement is REQUIRED to generate granular tasks for `tasks.md`:
+
+1. **Call task-refiner agent**:
+   ```
+   Task({
+     subagent_name: "task-refiner",
+     description: "Refine implementation tasks for OpenSpec",
+     prompt: "Please refine the following implementation plan into granular tasks:
+
+   Plan Name: ${PLAN_NAME}
+   
+   Implementation Steps:
+   <The implementation steps from Phase 2.7>
+   
+   Technical Solution:
+   <The technical solution from Phase 2.7>
+   
+   Requirements:
+   - Generate tasks that are 3-10 minutes each
+   - Each task must have clear acceptance criteria
+   - Mark dependencies between tasks
+   - Assign priorities (P0, P1, P2, P3)
+   - Specify exact file paths for all operations
+   - Make tasks independently executable
+   
+   Output format: Use the task-refiner's standard format with checkboxes."
+   })
+   ```
+
+2. **Wait for refined tasks**: The task-refiner will return a detailed task list with checkboxes
+
+3. **Store refined tasks** for use in Phase 4.5 (when creating OpenSpec artifacts)
+
+**For Standard Mode**:
+
+Task refinement is OPTIONAL but RECOMMENDED for complex plans:
+
+- If plan has >7 steps → Call task-refiner
+- If plan has estimated time >4 hours → Call task-refiner
+- Otherwise → Skip task refinement
+
+---
+
 ### Phase 2 End: Plan Delivery (Not Execution)
 
 **`/ccg:plan` responsibilities end here, MUST execute the following actions**:
@@ -935,6 +1015,95 @@ Synthesize both analyses, generate **Step-by-step Implementation Plan**:
 - Any write operations to production code
 - Automatically call execution commands or any implementation actions
 - Continue triggering agent calls when user hasn't explicitly requested modifications
+
+---
+
+### Phase 4.5: OpenSpec 集成与链接创建 (可选)
+
+`[Mode: Integrate & Link]`
+
+如果用户传递 `--openspec` 标志:
+
+1. **检测是否需要创建OpenSpec变更**:
+   - 检查 `openspec/changes/` 目录是否存在
+   - 检查 `openspec` CLI 是否可用
+   - 如果环境未初始化,提示用户先运行 `openspec init` 或跳过此步骤
+
+2. **获取细化后的任务列表**:
+   - 使用Phase 2.8中task-refiner生成的任务列表
+   - 如果Phase 2.8未执行,调用task-refiner now
+
+3. **创建OpenSpec目录结构**:
+   ```bash
+   CHANGE_NAME="${PLAN_FILE%.md}"
+   mkdir -p "openspec/changes/${CHANGE_NAME}/specs"
+   ```
+
+4. **生成OpenSpec工件**:
+   - **proposal.md**: 从计划的目标和范围生成
+     - 包含变更概述、目标、范围、验收标准
+     - 添加后向引用到计划文件
+   
+   - **specs/**: 创建详细的规格文件
+     - 根据技术方案分解为多个规格文件
+     - 每个规格文件专注于特定功能模块
+   
+   - **design.md**: 从技术方案生成
+     - 包含架构决策、技术选型、设计模式
+     - API设计、数据模型、关键算法
+   
+   - **tasks.md**: 使用task-refiner生成的任务列表
+     - 包含所有细化后的任务(3-10分钟/任务)
+     - 格式化为checkbox列表
+     - 包含任务优先级和依赖关系
+
+5. **建立双向链接** (使用 openspec-link-creator.js):
+   ```bash
+   node .codebuddy/scripts/openspec-link-creator.js create \
+     .codebuddy/plan/${PLAN_FILE} \
+     openspec/changes/${CHANGE_NAME}
+   ```
+   
+   这将自动:
+   - 在计划文件中添加前向引用 (Plan → OpenSpec)
+   - 在proposal.md中添加后向引用 (Proposal → Plan)
+   - 创建 .plan-mapping.md 映射表
+
+6. **验证链接**:
+   ```bash
+   node .codebuddy/scripts/validate-plan-links.js .codebuddy/plan/${PLAN_FILE}
+   ```
+   - 确认前向引用、后向引用、映射表都存在
+   - 确认所有工件文件都已创建
+
+7. **输出完成信息**:
+   ```
+   ✓ OpenSpec 集成完成
+   ✓ 链接已建立: .codebuddy/plan/${PLAN_FILE} ↔ openspec/changes/${CHANGE_NAME}
+   ✓ 映射表已创建: openspec/changes/${CHANGE_NAME}/.plan-mapping.md
+   
+   📊 任务统计:
+   - 总任务数: N 个
+   - P0任务: X 个 (关键路径)
+   - P1任务: Y 个 (重要)
+   - P2任务: Z 个 (增强)
+   - P3任务: W 个 (可选)
+   - 预计总时间: X小时Y分钟
+   
+   下一步:
+   - 运行 /multi-execute .codebuddy/plan/${PLAN_FILE} (会自动检测 OpenSpec)
+   - 或运行 /opsx:continue ${CHANGE_NAME} 完善工件
+   ```
+
+8. **可选: 质量评估**:
+   - 运行质量评估以确定是否可以执行:
+   ```bash
+   # 参考 .codebuddy/docs/openspec-quality-decision-matrix.md
+   node .codebuddy/scripts/openspec-quality-assessment.js ${CHANGE_NAME}
+   ```
+   - 综合得分 ≥80 批准执行
+   - 70-79 需要改进
+   - <70 需要重新规划
 
 ---
 

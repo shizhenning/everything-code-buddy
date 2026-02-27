@@ -1,0 +1,20 @@
+schema: spec-driven
+created: 2026-02-27
+status: in-progress
+artifacts:
+  - id: proposal
+    name: Proposal
+    status: done
+    depends: []
+  - id: design
+    name: Design Document
+    status: done
+    depends: [proposal]
+  - id: tasks
+    name: Implementation Tasks
+    status: done
+    depends: [design]
+  - id: verification
+    name: Verification Plan
+    status: pending
+    depends: [tasks]

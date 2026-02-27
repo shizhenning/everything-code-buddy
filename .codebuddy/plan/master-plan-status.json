@@ -1,7 +1,0 @@
-{
-  "current_plan": "P3",
-  "completed_plans": ["P1", "P2"],
-  "status": "completed",
-  "last_updated": "2026-02-26T00:00:00Z",
-  "notes": "P3 已完成，实现了核心 API 和物理验证服务，修复了审查报告中的 CRITICAL 问题"
-}
