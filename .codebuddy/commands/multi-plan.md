@@ -13,6 +13,8 @@ $ARGUMENTS
 - **Code Sovereignty**: This command only generates plans, all modifications by implementation commands
 - **Stop-Loss Mechanism**: Do not proceed to next phase until current phase output is validated
 - **Planning Only**: This command allows reading context and writing to `.codebuddy/plan/*` plan files, but **NEVER modify production code**
+- **Output Format Standardization**: All plan outputs MUST use YAML metadata + structured markdown format
+- **Quality Gate Validation**: Apply plan-stage validation (format/structure) before delivery
 
 ---
 
@@ -322,6 +324,69 @@ Output the optimized context in hierarchical format:
 ### Phase 2: Multi-Model Collaborative Analysis
 
 `[Mode: Analysis]`
+
+#### 2.0.1 Output Format Enforcement (NEW)
+
+`[Mode: Standardize]`
+
+**Mandatory YAML Metadata for All Agent Outputs**:
+
+All agents (backend-analyzer, frontend-analyzer, architect, task-refiner) MUST return outputs with YAML metadata header:
+
+```yaml
+---
+metadata:
+  agent: <agent-name>
+  timestamp: <ISO 8601 timestamp>
+  version: "2.1"
+  context_tokens: <estimated token count>
+  confidence: <high/medium/low>
+---
+```
+
+**Validation Rules**:
+- Missing YAML header → **REJECT** and request re-output
+- Invalid YAML format → **REJECT** and request re-output
+- Missing required fields → **REJECT** and request re-output
+
+**Structured Output Format**:
+
+Each agent MUST output in the following structured format:
+
+```markdown
+## Analysis Summary
+
+**Key Finding**: <brief 1-2 sentence summary>
+**Confidence**: <high/medium/low>
+**Estimated Complexity**: <simple/moderate/complex>
+**Recommended Actions**: <bulleted list>
+
+## Detailed Analysis
+
+### Technical Considerations
+<Backend/Technical analysis details>
+
+### Impact Assessment
+| Aspect | Impact | Severity |
+|--------|--------|----------|
+| Architecture | <description> | <low/medium/high> |
+| Performance | <description> | <low/medium/high> |
+| Security | <description> | <low/medium/high> |
+
+### Recommendations
+1. <Recommendation 1> with rationale
+2. <Recommendation 2> with rationale
+
+### Risks and Mitigations
+| Risk | Probability | Impact | Mitigation |
+|------|------------|--------|-----------|
+| <Risk 1> | <low/medium/high> | <low/medium/high> | <Mitigation> |
+```
+
+**Enforcement**:
+- Phase 2.1 MUST include format validation in agent prompts
+- If agent output lacks required format, **MUST** request re-output with corrected format
+- Store raw agent responses for feedback loop (Phase 5)
 
 #### 2.0 Agent Routing Decision (NEW)
 
@@ -780,11 +845,40 @@ Create a master plan file: `.codebuddy/plan/<feature-name>-master.md`
 
 ##### 2.6.3 Generate Sub-Plans
 
-For each sub-plan, generate a detailed plan file:
+For each sub-plan, generate a detailed plan file with mandatory YAML metadata:
 
 `.codebuddy/plan/<module-slug>.md`
 
 Each sub-plan must include:
+
+```yaml
+---
+plan:
+  name: "<Module Name>"
+  type: "subplan"
+  parent: "<master-plan-name>"
+  version: "2.1"
+  created_at: "<ISO 8601 timestamp>"
+
+metadata:
+  complexity: <simple/moderate/complex>
+  estimated_time: "<X hours Y minutes>"
+  priority: <P0/P1/P2/P3>
+  tech_stack:
+    - <tech-1>
+    - <tech-2>
+
+dependencies:
+  requires:
+    - <dependency-plan-1> | null
+  required_by:
+    - <dependent-plan-1> | null
+
+quality:
+  validation_status: "passed"
+  format_version: "2.1"
+---
+```
 
 ```markdown
 ## 子计划：<Module Name>
@@ -815,6 +909,11 @@ Each sub-plan must include:
 ### 后续依赖
 <List of plans that depend on this one>
 ```
+
+**Sub-Plan Validation**:
+- Each sub-plan MUST pass same quality gate as master plan
+- Check dependencies are declared correctly
+- Validate estimated times are reasonable (2-4 hours per sub-plan)
 
 ##### 2.6.4 OpenSpec Link Validation (NEW - for --openspec mode)
 
@@ -883,7 +982,35 @@ If the `--openspec` flag was provided:
 
 #### 2.7 Generate Implementation Plan (single plan - when no splitting needed)
 
-Synthesize both analyses, generate **Step-by-step Implementation Plan**:
+Synthesize both analyses, generate **Step-by-step Implementation Plan** with mandatory YAML metadata:
+
+```yaml
+---
+plan:
+  name: "<Task Name>"
+  version: "2.1"
+  created_at: "<ISO 8601 timestamp>"
+  agent_versions:
+    backend_analyzer: "version from metadata"
+    frontend_analyzer: "version from metadata"
+
+metadata:
+  complexity: <simple/moderate/complex>
+  estimated_time: "<X hours Y minutes>"
+  priority: <P0/P1/P2/P3>
+  tech_stack:
+    - <tech-1>
+    - <tech-2>
+
+quality:
+  validation_status: "passed"
+  format_version: "2.1"
+  checks:
+    yaml_metadata: true
+    structured_output: true
+    cross_validation: true
+---
+```
 
 ```markdown
 ## Implementation Plan: <Task Name>
@@ -910,6 +1037,50 @@ Synthesize both analyses, generate **Step-by-step Implementation Plan**:
 | Risk | Mitigation |
 |------|------------|
 ```
+
+**Plan-Stage Quality Gate Validation (NEW)**:
+
+Before saving plan, perform validation:
+
+```javascript
+// Validation schema (conceptual)
+const validationRules = {
+  required: [
+    'metadata.plan.name',
+    'metadata.complexity',
+    'metadata.estimated_time',
+    'metadata.tech_stack',
+    'metadata.quality.validation_status'
+  ],
+  format: {
+    yaml_metadata: 'valid_yaml',
+    implementation_steps: 'array_of_strings',
+    key_files: 'table_format'
+  },
+  cross_validation: {
+    backend_frontend_consensus: 'check_conflicts',
+    tech_stack_compatibility: 'check_compatibility'
+  }
+}
+
+// Validation results
+const validationStatus = {
+  passed: true,
+  warnings: [],
+  errors: []
+}
+
+// If errors exist, MUST fix before delivery
+if (validationStatus.errors.length > 0) {
+  // Fix errors automatically if possible
+  // Otherwise request clarification from agents
+}
+```
+
+**IMPORTANT**:
+- Validation MUST pass before plan delivery
+- Warnings are acceptable but should be documented
+- If validation fails, re-run phase 2.2 with adjusted prompts
 
 #### 2.8 Task Refinement (Enhanced for OpenSpec) (NEW)
 
@@ -966,55 +1137,115 @@ Task refinement is OPTIONAL but RECOMMENDED for complex plans:
 
 **For Single Plan (no splitting)**:
 
-1. Present complete implementation plan to user (including pseudo-code)
-2. Save plan to `.codebuddy/plan/<feature-name>.md` (extract feature name from requirement, e.g., `user-auth`, `payment-module`)
-3. Output prompt in **bold text** (MUST use actual saved file path):
+1. **Present complete implementation plan to user** (including pseudo-code):
+   - 使用清晰的 Markdown 格式
+   - 高亮关键信息 (使用 **粗体**)
+   - 提供时间预估和复杂度评级
+
+2. **Generate Mermaid visualization** (自动生成):
+   ```mermaid
+   graph TD
+       A[需求分析] --> B[后端分析]
+       A --> C[前端分析]
+       B --> D[交叉验证]
+       C --> D
+       D --> E[生成计划]
+       E --> F[质量验证]
+       F --> G[计划交付]
+   ```
+
+3. **Save plan to `.codebuddy/plan/<feature-name>.md`**:
+   - Extract feature name from requirement (e.g., `user-auth`, `payment-module`)
+   - Ensure YAML metadata is valid
+   - Confirm quality gate validation passed
+
+4. **Output interactive prompt in bold text** (MUST use actual saved file path):
 
    ---
-   **Plan generated and saved to `.codebuddy/plan/actual-feature-name.md`**
+   **✅ Plan generated and saved to `.codebuddy/plan/actual-feature-name.md`**
 
-   **Please review the plan above. You can:**
-   - **Modify plan**: Tell me what needs adjustment, I'll update the plan
-   - **Execute plan**: Copy the following command to a new session
+   **📊 计划概览:**
+   - 复杂度: <simple/moderate/complex>
+   - 预估耗时: <X hours Y minutes>
+   - 步骤数量: <N steps>
+   - 优先级: <P0/P1/P2/P3>
+
+   **🔍 您可以:**
+   - **📝 查看计划**: `cat .codebuddy/plan/actual-feature-name.md`
+   - **✏️ 修改计划**: 告诉我需要调整的地方,我会更新计划
+   - **▶️ 执行计划**: 复制以下命令到新会话执行
 
    ```
-   /plan .codebuddy/plan/actual-feature-name.md
+   /multi-execute .codebuddy/plan/actual-feature-name.md
    ```
+
+   **💡 可选操作:**
+   - **📋 生成 OpenSpec 工件**: `/multi-plan --openspec <requirement>`
+   - **🎨 查看可视化**: 计划文件中已包含 Mermaid 流程图
    ---
 
    **NOTE**: The `actual-feature-name.md` above MUST be replaced with the actual saved filename!
 
 **For Split Plan (master + sub-plans)**:
 
-1. Present master plan and sub-plans summary to user
-2. Save master plan to `.codebuddy/plan/<feature-name>-master.md`
-3. Save all sub-plans to `.codebuddy/plan/<module-slug>.md`
-4. Output prompt in **bold text**:
+1. **Present master plan and sub-plans summary to user**:
+   - 使用清晰的层级结构
+   - 提供执行依赖关系图
+   - 高亮关键路径任务
+
+2. **Generate execution flow visualization** (自动生成):
+   ```mermaid
+   graph TD
+       A[总计划开始] --> B[子计划1: <Module 1>]
+       A --> C[子计划2: <Module 2>]
+       B --> D{依赖检查}
+       C --> D
+       D --> E[子计划3: <Module 3>]
+       E --> F[总计划完成]
+   ```
+
+3. **Save master plan to `.codebuddy/plan/<feature-name>-master.md`**
+4. **Save all sub-plans to `.codebuddy/plan/<module-slug>.md`**
+5. **Output interactive prompt in bold text**:
 
    ---
-   **Plan split and saved. Master plan: `.codebuddy/plan/actual-feature-name-master.md`**
+   **✅ Plan split and saved. Master plan: `.codebuddy/plan/actual-feature-name-master.md`**
 
-   **Sub-plans generated:**
-   - Plan 1: `.codebuddy/plan/module-1.md`
-   - Plan 2: `.codebuddy/plan/module-2.md`
-   ...
+   **📊 拆分概览:**
+   - 总子计划数: <N>
+   - 总预估耗时: <X hours Y minutes>
+   - 关键路径: <列出关键依赖>
 
-   **Next steps:**
-   - **Review master plan**: Check execution order and dependencies
-   - **Execute sub-plans**: Run in the specified order, or use batch execution
+   **📁 生成的文件:**
+   - **总计划**: `.codebuddy/plan/actual-feature-name-master.md`
+   - **子计划列表:**
+     - Plan 1: `.codebuddy/plan/module-1.md` (<Module 1 Name>) - P0 - 2h
+     - Plan 2: `.codebuddy/plan/module-2.md` (<Module 2 Name>) - P1 - 1.5h
+     - Plan 3: `.codebuddy/plan/module-3.md` (<Module 3 Name>) - P0 - 3h
+
+   **🔍 下一步操作:**
+   - **📝 查看总计划**: 检查执行顺序和依赖关系
+   - **📊 查看流程图**: 总计划文件中包含 Mermaid 依赖关系图
+   - **▶️ 执行子计划**: 按指定顺序执行,或使用批量执行
 
    ```
-   /execute .codebuddy/plan/actual-feature-name-master.md
+   /multi-execute .codebuddy/plan/actual-feature-name-master.md
    ```
+
+   **💡 提示:**
+   - 所有子计划可以独立执行(满足依赖条件后)
+   - P0 计划应该优先执行
+   - 可以并行执行无依赖的子计划
    ---
 
-4. **Immediately terminate current response** (Stop here. No more tool calls.)
+6. **Immediately terminate current response** (Stop here. No more tool calls.)
 
 **ABSOLUTELY FORBIDDEN**:
 - Ask user "Y/N" then auto-execute (execution is separate command's responsibility)
 - Any write operations to production code
 - Automatically call execution commands or any implementation actions
 - Continue triggering agent calls when user hasn't explicitly requested modifications
+- Hide critical information (risks, dependencies, time estimates)
 
 ---
 
@@ -1024,64 +1255,150 @@ Task refinement is OPTIONAL but RECOMMENDED for complex plans:
 
 如果用户传递 `--openspec` 标志:
 
-1. **检测是否需要创建OpenSpec变更**:
+1. **检测OpenSpec环境**:
    - 检查 `openspec/changes/` 目录是否存在
-   - 检查 `openspec` CLI 是否可用
-   - 如果环境未初始化,提示用户先运行 `openspec init` 或跳过此步骤
+   - 如果不存在,自动创建目录结构
+   - 如果环境未初始化,提供友好提示并跳过此步骤
 
 2. **获取细化后的任务列表**:
    - 使用Phase 2.8中task-refiner生成的任务列表
    - 如果Phase 2.8未执行,调用task-refiner now
 
-3. **创建OpenSpec目录结构**:
-   ```bash
+3. **自动创建OpenSpec目录结构** (内建逻辑,无需外部脚本):
+   ```
    CHANGE_NAME="${PLAN_FILE%.md}"
    mkdir -p "openspec/changes/${CHANGE_NAME}/specs"
    ```
 
-4. **生成OpenSpec工件**:
-   - **proposal.md**: 从计划的目标和范围生成
-     - 包含变更概述、目标、范围、验收标准
-     - 添加后向引用到计划文件
-   
-   - **specs/**: 创建详细的规格文件
-     - 根据技术方案分解为多个规格文件
-     - 每个规格文件专注于特定功能模块
-   
-   - **design.md**: 从技术方案生成
-     - 包含架构决策、技术选型、设计模式
-     - API设计、数据模型、关键算法
-   
-   - **tasks.md**: 使用task-refiner生成的任务列表
-     - 包含所有细化后的任务(3-10分钟/任务)
-     - 格式化为checkbox列表
-     - 包含任务优先级和依赖关系
+4. **生成OpenSpec工件** (内建转换逻辑):
 
-5. **建立双向链接** (使用 openspec-link-creator.js):
-   ```bash
-   node .codebuddy/scripts/openspec-link-creator.js create \
-     .codebuddy/plan/${PLAN_FILE} \
-     openspec/changes/${CHANGE_NAME}
-   ```
-   
-   这将自动:
-   - 在计划文件中添加前向引用 (Plan → OpenSpec)
-   - 在proposal.md中添加后向引用 (Proposal → Plan)
-   - 创建 .plan-mapping.md 映射表
+   **A. proposal.md** (从计划自动生成):
+   ```markdown
+   ---
+   metadata:
+     artifact: "proposal"
+     version: "2.1"
+     plan_reference: ".codebuddy/plan/${PLAN_FILE}"
+     created_at: "<ISO 8601 timestamp>"
+   ---
 
-6. **验证链接**:
-   ```bash
-   node .codebuddy/scripts/validate-plan-links.js .codebuddy/plan/${PLAN_FILE}
+   # Proposal: <Plan Name>
+
+   ## Overview
+   <从计划的目标和范围生成>
+
+   ## Objectives
+   <从计划的验收标准提取>
+
+   ## Scope
+   <从计划的实施步骤范围提取>
+
+   ## Success Criteria
+   <从计划的验收标准提取>
+
+   ## Related Plan
+   **Plan File**: `.codebuddy/plan/${PLAN_FILE}`
+   **Generated At**: <timestamp>
    ```
-   - 确认前向引用、后向引用、映射表都存在
-   - 确认所有工件文件都已创建
+
+   **B. specs/** (自动分解):
+   - 根据技术方案自动分解为多个规格文件
+   - 每个规格文件专注于特定功能模块
+   - 使用模板生成一致的格式
+
+   **C. design.md** (从技术方案提取):
+   ```markdown
+   ---
+   metadata:
+     artifact: "design"
+     version: "2.1"
+     plan_reference: ".codebuddy/plan/${PLAN_FILE}"
+     created_at: "<ISO 8601 timestamp>"
+   ---
+
+   # Design: <Plan Name>
+
+   ## Architecture Decisions
+   <从计划的技术方案提取架构决策>
+
+   ## Tech Stack
+   <从计划的YAML metadata提取>
+
+   ## Data Models
+   <从计划的实施步骤提取数据模型>
+
+   ## API Design (if applicable)
+   <从计划提取API设计>
+   ```
+
+   **D. tasks.md** (使用task-refiner生成的任务列表):
+   ```markdown
+   ---
+   metadata:
+     artifact: "tasks"
+     version: "2.1"
+     plan_reference: ".codebuddy/plan/${PLAN_FILE}"
+     created_at: "<ISO 8601 timestamp>"
+     total_tasks: <N>
+   ---
+
+   # Tasks: <Plan Name>
+
+   ## Task Statistics
+   - Total Tasks: <N>
+   - P0 Tasks: <X>
+   - P1 Tasks: <Y>
+   - P2 Tasks: <Z>
+   - P3 Tasks: <W>
+   - Estimated Total Time: <Xh Ym>
+
+   ## Task List
+   <task-refiner生成的checkbox列表>
+   ```
+
+5. **建立双向链接** (内建逻辑,无需外部脚本):
+   - 自动在计划文件中添加前向引用:
+     ```markdown
+     ## Related OpenSpec Change
+     **Change Directory**: `openspec/changes/${CHANGE_NAME}`
+     **Linked At**: <timestamp>
+     ```
+   - 自动在proposal.md中添加后向引用:
+     ```markdown
+     ## Related Plan
+     **Plan File**: `.codebuddy/plan/${PLAN_FILE}`
+     **Linked At**: <timestamp>
+     ```
+   - 自动创建 `.plan-mapping.md` 映射表:
+     ```yaml
+     ---
+     mapping:
+       plan_file: ".codebuddy/plan/${PLAN_FILE}"
+       change_directory: "openspec/changes/${CHANGE_NAME}"
+       created_at: "<timestamp>"
+       artifacts:
+         - proposal.md
+         - design.md
+         - tasks.md
+         - specs/
+     ---
+     ```
+
+6. **内建链接验证** (无需外部脚本):
+   ```
+   验证清单:
+   ✓ 前向引用存在: .codebuddy/plan/${PLAN_FILE}
+   ✓ 后向引用存在: openspec/changes/${CHANGE_NAME}/proposal.md
+   ✓ 映射表存在: openspec/changes/${CHANGE_NAME}/.plan-mapping.md
+   ✓ 所有工件文件已创建
+   ```
 
 7. **输出完成信息**:
    ```
    ✓ OpenSpec 集成完成
    ✓ 链接已建立: .codebuddy/plan/${PLAN_FILE} ↔ openspec/changes/${CHANGE_NAME}
    ✓ 映射表已创建: openspec/changes/${CHANGE_NAME}/.plan-mapping.md
-   
+
    📊 任务统计:
    - 总任务数: N 个
    - P0任务: X 个 (关键路径)
@@ -1089,21 +1406,166 @@ Task refinement is OPTIONAL but RECOMMENDED for complex plans:
    - P2任务: Z 个 (增强)
    - P3任务: W 个 (可选)
    - 预计总时间: X小时Y分钟
-   
+
+   📁 生成的工件:
+   - openspec/changes/${CHANGE_NAME}/proposal.md
+   - openspec/changes/${CHANGE_NAME}/design.md
+   - openspec/changes/${CHANGE_NAME}/tasks.md
+   - openspec/changes/${CHANGE_NAME}/specs/<spec-files>
+
    下一步:
    - 运行 /multi-execute .codebuddy/plan/${PLAN_FILE} (会自动检测 OpenSpec)
    - 或运行 /opsx:continue ${CHANGE_NAME} 完善工件
    ```
 
-8. **可选: 质量评估**:
-   - 运行质量评估以确定是否可以执行:
-   ```bash
-   # 参考 .codebuddy/docs/openspec-quality-decision-matrix.md
-   node .codebuddy/scripts/openspec-quality-assessment.js ${CHANGE_NAME}
+8. **内建质量检查** (无需外部脚本):
    ```
-   - 综合得分 ≥80 批准执行
-   - 70-79 需要改进
-   - <70 需要重新规划
+   质量检查:
+   ✓ YAML metadata 有效
+   ✓ 文件格式符合规范
+   ✓ 链接完整性验证通过
+   ✓ 工件生成完整
+
+   如果发现问题:
+   - 自动修复格式问题
+   - 提供缺失文件的友好提示
+   - 记录警告但不阻止流程
+   ```
+
+### Phase 5: 动态反馈机制 (NEW)
+
+`[Mode: Feedback]`
+
+#### 5.1 执行反馈收集 (在 multi-execute 阶段触发)
+
+当用户运行 `/multi-execute .codebuddy/plan/<plan-file>` 后,此阶段收集反馈:
+
+**如果执行成功**:
+```markdown
+✓ 执行完成: .codebuddy/plan/<plan-file>
+✓ 所有步骤已完成
+✓ 验收标准已通过
+
+✨ 执行结果总结:
+- 成功完成步骤: N/N
+- 预估耗时: Xh Ym
+- 实际耗时: Xh Ym
+- 准确性偏差: ±Z%
+```
+
+**如果执行失败或需要调整**:
+```markdown
+⚠️ 执行反馈: .codebuddy/plan/<plan-file>
+
+问题报告:
+1. 步骤X: <问题描述>
+   - 预期: <预期结果>
+   - 实际: <实际结果>
+   - 建议: <修复建议>
+
+2. 步骤Y: <问题描述>
+   ...
+```
+
+#### 5.2 反馈分析 (自动)
+
+分析执行反馈,提取模式:
+
+**分析维度**:
+| 维度 | 指标 | 用途 |
+|------|------|------|
+| 时间估算准确性 | (实际时间 - 预估时间) / 预估时间 | 调整未来估算 |
+| 技术方案可行性 | 失败步骤数量 / 总步骤数 | 评估技术方案 |
+| 依赖完整性 | 因依赖问题失败的步骤 | 改进依赖识别 |
+| 上下文充分性 | 因缺少上下文失败的步骤 | 优化上下文检索 |
+
+**反馈分类**:
+```
+✅ 成功案例 → 记录成功模式
+⚠️ 偏差案例 → 分析偏差原因
+❌ 失败案例 → 识别失败根因
+🔄 迭代案例 → 跟踪迭代优化
+```
+
+#### 5.3 自动计划优化 (可选)
+
+如果检测到系统性问题,自动优化计划:
+
+**优化场景**:
+1. **时间估算持续偏差**:
+   - 调整 Phase 2.7 的时间估算公式
+   - 记录历史偏差率用于校正
+
+2. **特定技术方案失败率高**:
+   - 在 Phase 2.2 标记该方案为高风险
+   - 要求 agent 提供替代方案
+
+3. **上下文经常不足**:
+   - 优化 Phase 1.2 的检索策略
+   - 增加相关文件优先级
+
+**优化输出格式**:
+```markdown
+## 计划优化建议
+
+基于执行反馈,建议优化:
+
+1. 时间估算调整
+   - 原因: <分析结果>
+   - 建议: <具体调整>
+
+2. 技术方案改进
+   - 原因: <分析结果>
+   - 建议: <具体改进>
+
+是否应用优化? (是/否)
+```
+
+#### 5.4 反馈存储 (内建)
+
+将反馈存储到 `.codebuddy/feedback/plan-executions.json`:
+
+```json
+{
+  "plan_file": ".codebuddy/plan/plan-name.md",
+  "executed_at": "2025-02-28T10:30:00Z",
+  "result": {
+    "status": "success" | "partial" | "failed",
+    "completed_steps": N,
+    "total_steps": M,
+    "estimated_time": "2h 30m",
+    "actual_time": "2h 45m",
+    "issues": [
+      {
+        "step": 3,
+        "description": "Issue description",
+        "severity": "low" | "medium" | "high"
+      }
+    ]
+  },
+  "feedback_analysis": {
+    "time_accuracy": 0.92,
+    "technical_feasibility": 0.88,
+    "dependency_completeness": 0.95,
+    "context_sufficiency": 0.90
+  }
+}
+```
+
+#### 5.5 反馈可视化 (可选)
+
+如果用户请求,生成反馈可视化:
+
+```mermaid
+graph LR
+    A[计划生成] --> B[执行]
+    B --> C{执行结果}
+    C -->|成功| D[✅ 记录成功模式]
+    C -->|失败| E[⚠️ 分析失败原因]
+    E --> F[📊 生成优化建议]
+    F --> G[🔄 优化未来计划]
+    D --> G
+```
 
 ---
 
@@ -1123,14 +1585,275 @@ After planning completes:
 
 ---
 
-## Plan Modification Flow
+## Plan Modification Flow (增强版)
 
 If user requests plan modifications:
 
-1. Adjust plan content based on user feedback
-2. Update `.codebuddy/plan/<feature-name>.md` file
-3. Re-present modified plan
-4. Prompt user to review or execute again
+### 交互式修改流程
+
+**Step 1: 理解修改意图**
+- 分析用户反馈,识别修改类型:
+  - **内容修改**: 调整实施步骤、技术方案
+  - **范围修改**: 增加/减少功能范围
+  - **优先级调整**: 调整任务优先级顺序
+  - **时间调整**: 调整时间预估
+
+**Step 2: 修改实施**
+1. **调整计划内容**:
+   - 基于用户反馈调整计划
+   - 保持 YAML metadata 的一致性
+   - 更新时间预估和复杂度评级
+
+2. **更新计划文件**:
+   - 更新 `.codebuddy/plan/<feature-name>.md`
+   - 更新 OpenSpec 链接(如果存在)
+   - 保留修改历史(在注释中)
+
+3. **重新验证**:
+   - 运行质量门禁验证
+   - 确保修改后的计划仍然有效
+   - 记录修改原因
+
+**Step 3: 重新呈现计划**
+```markdown
+## ✅ 计划已更新
+
+**修改摘要:**
+- <修改内容 1>
+- <修改内容 2>
+
+**更新后的文件**: `.codebuddy/plan/<feature-name>.md`
+
+**变更历史**:
+- [2025-02-28 10:30] 初始版本
+- [2025-02-28 11:15] 修改: <修改原因>
+
+**下一步**:
+- 📝 查看更新后的计划
+- ▶️ 执行计划
+- ✏️ 继续修改
+```
+
+**Step 4: 智能建议** (可选)
+如果修改涉及重大变更,提供智能建议:
+```markdown
+💡 智能建议:
+
+检测到重大修改,建议:
+1. 重新运行 task-refiner 以细化任务
+2. 更新 OpenSpec 工件(如果已创建)
+3. 检查其他计划的依赖关系
+
+是否执行建议? (是/否)
+```
+
+### 修改类型处理
+
+**A. 内容修改** (调整实施步骤):
+- 修改实施步骤内容
+- 保持步骤数量基本不变
+- 更新关键文件列表
+
+**B. 范围修改** (增加/减少功能):
+- 如果大幅增加范围 → 建议拆分为新计划
+- 如果减少范围 → 更新 YAML metadata 的复杂度和时间预估
+- 如果功能模块变化 → 调整 task-refiner 输出
+
+**C. 优先级调整**:
+- 重新排列实施步骤顺序
+- 更新 YAML metadata 的优先级字段
+- 标注关键路径
+
+**D. 时间调整**:
+- 调整 YAML metadata 的时间预估
+- 记录调整原因(如"根据用户反馈增加缓冲时间")
+- 计算新的偏差率用于反馈机制
+
+### 修改验证清单
+
+在重新呈现计划前,确保:
+- [ ] YAML metadata 格式正确
+- [ ] 实施步骤与 YAML metadata 一致
+- [ ] 关键文件列表准确
+- [ ] 依赖关系清晰
+- [ ] 质量门禁验证通过
+- [ ] OpenSpec 链接已更新(如果适用)
+- [ ] 修改历史已记录
+
+---
+
+## 错误处理机制 (增强版)
+
+### 错误分类与处理策略
+
+| 错误类型 | 严重程度 | 处理策略 | 恢复方法 |
+|---------|---------|---------|---------|
+| **Agent 调用失败** | 高 | 重试3次,然后降级 | 使用备用 agent 或简化任务 |
+| **上下文检索不足** | 中 | 递归检索,然后手动澄清 | 生成引导性问题 |
+| **YAML 格式错误** | 高 | 自动修复,否则请求重输出 | 使用 YAML 验证器修复 |
+| **质量门禁失败** | 中 | 自动修复小问题,否则人工审查 | 记录失败原因,提供修复建议 |
+| **文件写入失败** | 高 | 检查权限和路径,重试 | 提供友好的错误信息 |
+| **OpenSpec 集成失败** | 低 | 跳过,警告但不阻止 | 记录警告,稍后手动集成 |
+
+### 错误恢复流程
+
+**流程 1: Agent 调用失败恢复**
+```mermaid
+graph TD
+    A[Agent 调用] --> B{调用成功?}
+    B -->|是| C[继续执行]
+    B -->|否| D[重试1]
+    D --> E{成功?}
+    E -->|是| C
+    E -->|否| F[重试2]
+    F --> G{成功?}
+    G -->|是| C
+    G -->|否| H[重试3]
+    H --> I{成功?}
+    I -->|是| C
+    I -->|否| J[降级处理]
+    J --> K[使用备用方案]
+    K --> L[记录错误]
+    L --> C
+```
+
+**降级处理策略**:
+1. **backend-analyzer 失败**: 使用 planner agent 作为替代
+2. **frontend-analyzer 失败**: 使用 planner agent 作为替代
+3. **architect 失败**: 手动综合已有分析生成计划
+4. **task-refiner 失败**: 使用原始实施步骤,不细化
+
+**流程 2: 上下文检索不足恢复**
+```markdown
+⚠️ 上下文检索警告
+
+检索到的上下文可能不完整:
+- 缺少关键文件: <file list>
+- 缺少配置信息: <config list>
+- 缺少测试文件: <test list>
+
+正在尝试递归检索...
+
+如果递归检索后仍然不足,将生成引导性问题:
+
+❓ 需要澄清的问题:
+1. <问题 1>
+2. <问题 2>
+
+请提供更多信息或确认现有上下文已足够。
+```
+
+**流程 3: YAML 格式错误自动修复**
+```javascript
+// 自动修复常见 YAML 错误
+const yamlFixes = {
+  missing_quotes: (str) => str.replace(/: (.+)$/gm, ': "$1"'),
+  incorrect_indentation: (str) => str.replace(/^  /gm, '    '),
+  missing_colon: (str) => str.replace(/([a-z_]+) /gi, '$1: ')
+}
+
+// 尝试自动修复
+for (const [error, fix] of Object.entries(yamlFixes)) {
+  try {
+    fixed = fix(yaml_content)
+    yaml.parse(fixed) // 验证
+    console.log(`✅ 自动修复成功: ${error}`)
+    return fixed
+  } catch (e) {
+    console.log(`❌ 修复失败: ${error}`)
+  }
+}
+
+// 如果自动修复失败,请求人工介入
+```
+
+### 用户友好的错误信息
+
+**错误信息模板**:
+```markdown
+## ⚠️ 执行遇到问题
+
+**错误类型**: <Error Type>
+**发生阶段**: <Phase X.Y>
+**错误描述**: <用户友好的描述>
+
+**可能的原因**:
+1. <可能原因 1>
+2. <可能原因 2>
+
+**已尝试的恢复措施**:
+- [x] 重试调用 (3次)
+- [x] 降级处理
+- [ ] 自动修复
+
+**建议的解决方案**:
+1. **方案 A**: <具体操作步骤>
+   - 预期结果: <描述>
+   - 风险: <低/中/高>
+
+2. **方案 B**: <具体操作步骤>
+   - 预期结果: <描述>
+   - 风险: <低/中/高>
+
+**技术细节** (如需调试):
+```
+<详细错误堆栈>
+```
+
+**下一步**:
+- 💬 描述您遇到的问题,我会帮助解决
+- 🔄 重试执行相同命令
+- 📝 查看日志文件获取更多信息
+```
+
+### 错误日志记录
+
+所有错误自动记录到 `.codebuddy/logs/plan-errors.json`:
+
+```json
+{
+  "timestamp": "2025-02-28T10:30:00Z",
+  "plan_file": ".codebuddy/plan/plan-name.md",
+  "error": {
+    "type": "agent_call_failed",
+    "phase": "Phase 2.1",
+    "agent": "backend-analyzer",
+    "message": "Agent call timed out after 3 retries",
+    "recovery_attempt": "fallback_to_planner",
+    "recovery_success": true
+  },
+  "context": {
+    "requirement": "<brief requirement>",
+    "context_size": "25000 tokens",
+    "attempted_retries": 3
+  }
+}
+```
+
+### 错误统计与优化
+
+定期分析错误日志,识别系统性问题:
+
+```markdown
+## 错误统计报告
+
+**周期**: 2025-02-01 至 2025-02-28
+
+**错误类型分布**:
+- Agent 调用失败: 5 (25%)
+- 上下文检索不足: 3 (15%)
+- YAML 格式错误: 2 (10%)
+- 其他: 10 (50%)
+
+**恢复成功率**:
+- 自动恢复成功: 15 (75%)
+- 需要人工介入: 5 (25%)
+
+**优化建议**:
+1. Agent 调用失败率高 → 增加 timeout 时间
+2. 上下文检索优化 → 改进检索策略
+3. YAML 格式错误 → 添加前置验证
+```
 
 ---
 
