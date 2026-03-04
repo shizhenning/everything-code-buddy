@@ -43,7 +43,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"d:\\UGit\\everything-codebuddy/.codebuddy/skills/continuous-learning-v2/hooks/observe.sh\"",
+            "command": "node \"d:\\UGit\\everything-codebuddy/.codebuddy/skills/continuous-learning-v2/hooks/observe.js\"",
             "description": "Capture tool usage for continuous learning"
           }
         ]
@@ -106,7 +106,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"d:\\UGit\\everything-codebuddy/.codebuddy/skills/continuous-learning-v2/hooks/observe.sh\"",
+            "command": "node \"d:\\UGit\\everything-codebuddy/.codebuddy/skills/continuous-learning-v2/hooks/observe.js\"",
             "description": "Capture tool usage for continuous learning"
           }
         ]
