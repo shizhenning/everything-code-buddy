@@ -25,6 +25,43 @@ This tool provides automated conversion of `.codebuddy/plan/` files to OpenSpec 
 - Maintain full traceability to original plans
 - Validate generated specs against OpenSpec standards
 - Support incremental updates and conflict resolution
+- **支持中英文输出**（默认中文）
+
+## 语言配置
+
+**默认语言**：中文（zh-CN）
+
+**强制使用中文**：
+```bash
+/plan-to-openspec infrastructure-user-center.md --lang zh-CN
+```
+
+**使用英文**：
+```bash
+/plan-to-openspec infrastructure-user-center.md --lang en-US
+```
+
+**配置文件设置**：
+```json
+{
+  "conversion": {
+    "language": "zh-CN"  // zh-CN=中文，en-US=英文
+  }
+}
+```
+
+**生成的文件语言影响**：
+- ✅ spec.md - 需求描述、场景（GIVEN/WHEN/THEN）
+- ✅ design.md - 架构设计、API 设计
+- ✅ tasks.md - 任务描述、验收标准
+- ✅ proposal.md - 变更提案
+- ✅ mapping.md - 映射文档
+
+**重要**：Gherkin 关键字在中文版本中翻译为：
+- GIVEN → 假设
+- AND → 并且
+- WHEN → 当
+- THEN → 那么
 
 ## Usage
 
@@ -56,6 +93,30 @@ Example:
 ```bash
 /plan-to-openspec <plan-file> --dry-run
 ```
+
+### 强制使用中文生成
+
+```bash
+/plan-to-openspec <plan-file> --lang zh-CN
+```
+
+示例：
+```bash
+/plan-to-openspec infrastructure-user-center.md --lang zh-CN
+```
+
+这将生成的所有 OpenSpec 规范文件（spec.md、design.md、tasks.md、proposal.md、mapping.md）都使用中文编写，包括：
+- 需求描述
+- 场景说明（GIVEN/WHEN/THEN）
+- 设计文档
+- 任务描述
+- 验收标准
+- 映射文档
+
+**重要说明**：
+- 默认语言为中文（zh-CN）
+- 如果需要英文，使用 `--lang en-US`
+- 配置文件中的 `language` 选项也会影响输出语言
 
 ## Workflow
 
@@ -1250,7 +1311,7 @@ Tests: PasswordServiceTest.java, AuthServiceTest.java,
 | `changePrefix` | string | "change-" | Prefix for change directories |
 | `validateOnGenerate` | boolean | true | Validate specs after generation |
 | `preserveOriginal` | boolean | true | Keep original plan files |
-| `language` | string | "zh-CN" | Output language (zh-CN, en-US) |
+| `language` | string | "zh-CN" | **输出语言（zh-CN=中文，en-US=英文），默认中文** |
 | `specLanguage` | string | "SHALL" | Requirement language (SHALL, MUST) |
 | `scenarioStyle` | string | "gherkin" | Scenario format (gherkin, plain) |
 | `includeNonFunctional` | boolean | true | Include NFRs in specs |

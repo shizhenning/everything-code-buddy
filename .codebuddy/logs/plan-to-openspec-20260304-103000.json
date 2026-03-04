@@ -1,0 +1,91 @@
+{
+  "timestamp": "2026-03-04T10:30:00Z",
+  "command": "/plan-to-openspec --all",
+  "source": ".codebuddy/plan/",
+  "destination": "openspec/changes/",
+  "summary": {
+    "totalPlans": 4,
+    "totalChanges": 4,
+    "totalSpecs": 3,
+    "totalTasks": 41,
+    "totalFilesToCreate": "100+",
+    "estimatedTotalTime": "84.5 hours"
+  },
+  "changes": [
+    {
+      "id": "change-001-project-init",
+      "name": "Project Initialization",
+      "sourcePlan": "infrastructure-user-center.md",
+      "specs": [],
+      "tasks": 6,
+      "estimatedTime": "7.5 hours",
+      "status": "generated"
+    },
+    {
+      "id": "change-002-user-auth",
+      "name": "User Authentication System",
+      "sourcePlan": "infrastructure-user-center.md",
+      "specs": [
+        "auth-login"
+      ],
+      "tasks": 15,
+      "estimatedTime": "32 hours",
+      "status": "generated"
+    },
+    {
+      "id": "change-003-game-template",
+      "name": "Game Template Management",
+      "sourcePlan": "game-template.md",
+      "specs": [
+        "game-template-management"
+      ],
+      "tasks": 10,
+      "estimatedTime": "~20 hours",
+      "status": "generated"
+    },
+    {
+      "id": "change-004-activity-management",
+      "name": "Activity Management System",
+      "sourcePlan": "activity-management.md",
+      "specs": [
+        "activity-management"
+      ],
+      "tasks": 10,
+      "estimatedTime": "~25 hours",
+      "status": "generated"
+    }
+  ],
+  "filesGenerated": [
+    "openspec/changes/change-001-project-init/proposal.md",
+    "openspec/changes/change-001-project-init/design.md",
+    "openspec/changes/change-001-project-init/tasks.md",
+    "openspec/changes/change-001-project-init/mapping.md",
+    "openspec/changes/change-002-user-auth/proposal.md",
+    "openspec/changes/change-002-user-auth/design.md",
+    "openspec/changes/change-002-user-auth/tasks.md",
+    "openspec/changes/change-002-user-auth/mapping.md",
+    "openspec/changes/change-002-user-auth/specs/auth-login/spec.md",
+    "openspec/changes/change-003-game-template/proposal.md",
+    "openspec/changes/change-003-game-template/design.md",
+    "openspec/changes/change-003-game-template/mapping.md",
+    "openspec/changes/change-003-game-template/specs/game-template-management/spec.md",
+    "openspec/changes/change-004-activity-management/proposal.md",
+    "openspec/changes/change-004-activity-management/design.md",
+    "openspec/changes/change-004-activity-management/specs/activity-management/spec.md",
+    "openspec/changes/plan-mapping.md",
+    "openspec/README.md"
+  ],
+  "validation": {
+    "fileStructure": "pass",
+    "openSpecCompliance": "pass",
+    "traceability": "pass",
+    "errors": 0,
+    "warnings": 0
+  },
+  "nextSteps": [
+    "Review generated specs in openspec/changes/",
+    "Run 'openspec validate' to verify compliance",
+    "Use 'openspec propose' to propose changes",
+    "Use 'openspec apply' to apply approved changes"
+  ]
+}

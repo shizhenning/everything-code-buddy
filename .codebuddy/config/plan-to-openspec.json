@@ -1,0 +1,44 @@
+{
+  "version": "1.0.0",
+  "outputDir": "openspec",
+  "planDir": ".codebuddy/plan",
+  "changePrefix": "change-",
+  "validateOnGenerate": true,
+  "preserveOriginal": true,
+
+  "conversion": {
+    "language": "zh-CN",
+    "specLanguage": "SHALL",
+    "scenarioStyle": "gherkin",
+    "includeNonFunctional": true,
+    "includeAcceptanceCriteria": true
+  },
+
+  "tasks": {
+    "estimateTime": true,
+    "includeDependencies": true,
+    "includePriority": true,
+    "taskGranularity": "fine"
+  },
+
+  "validation": {
+    "strictMode": false,
+    "failOnError": false,
+    "generateReport": true
+  },
+
+  "git": {
+    "autoCommit": false,
+    "commitMessage": "chore: convert plan to OpenSpec specs",
+    "createBranch": false,
+    "branchName": "openspec/conversion"
+  },
+
+  "advanced": {
+    "customTemplates": ".codebuddy/templates/plan-to-openspec/",
+    "preProcessScript": ".codebuddy/scripts/plan-to-openspec-pre.js",
+    "postProcessScript": ".codebuddy/scripts/plan-to-openspec-post.js",
+    "skipExistingChanges": false,
+    "mergeStrategy": "replace"
+  }
+}
